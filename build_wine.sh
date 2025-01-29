@@ -315,9 +315,9 @@ elif [ "$WINE_BRANCH" = "wayland" ]; then
                                ${WINE_BUILD_OPTIONS}"
 elif [ "$WINE_BRANCH" = "proton" ]; then
 	if [ -z "${PROTON_BRANCH}" ]; then
-		https://github.com/CachyOS/proton-cachyos
+		https://github.com/ValveSoftware/wine
 	else
-		https://github.com/CachyOS/proton-cachyos -b "${PROTON_BRANCH}"
+		git clone https://github.com/ValveSoftware/wine -b "${PROTON_BRANCH}"
 	fi
 
 	if [ "${PROTON_BRANCH}" = "experimental_8.0" ]; then
