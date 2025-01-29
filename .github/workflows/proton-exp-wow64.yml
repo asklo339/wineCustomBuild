@@ -27,7 +27,7 @@ jobs:
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           sudo tar -C /opt -xpf "/opt/Bootstraps WoW64/bootstraps_wow64.tar.xz"
           chmod +x build_wine.sh
-          WINE_BRANCH=proton PROTON_BRANCH=bleeding-edge ./build_wine.sh
+          WINE_BRANCH=proton ./build_wine.sh
           sha256sum *.tar.xz
       - uses: softprops/action-gh-release@v2
         with:
