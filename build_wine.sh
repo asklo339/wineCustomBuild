@@ -38,7 +38,7 @@ export WINE_BRANCH="${WINE_BRANCH:-staging}"
 # proton_7.0, experimental_7.0, proton_8.0, experimental_8.0, experimental_9.0
 # bleeding-edge
 # Leave empty to use the default branch.
-export PROTON_BRANCH="${PROTON_BRANCH:-proton_8.0}"
+export PROTON_BRANCH="${PROTON_BRANCH:-cachyos-9.0-20250102-slr}"
 
 # Sometimes Wine and Staging versions don't match (for example, 5.15.2).
 # Leave this empty to use Staging version that matches the Wine version.
@@ -315,9 +315,9 @@ elif [ "$WINE_BRANCH" = "wayland" ]; then
                                ${WINE_BUILD_OPTIONS}"
 elif [ "$WINE_BRANCH" = "proton" ]; then
 	if [ -z "${PROTON_BRANCH}" ]; then
-		git clone https://github.com/ValveSoftware/wine
+		https://github.com/CachyOS/proton-cachyos
 	else
-		git clone https://github.com/ValveSoftware/wine -b "${PROTON_BRANCH}"
+		https://github.com/CachyOS/proton-cachyos -b "${PROTON_BRANCH}"
 	fi
 
 	if [ "${PROTON_BRANCH}" = "experimental_8.0" ]; then
