@@ -317,7 +317,8 @@ elif [ "$WINE_BRANCH" = "proton" ]; then
 	if [ -z "${PROTON_BRANCH}" ]; then
 		https://github.com/CachyOS/proton-cachyos
 	else
-		https://github.com/CachyOS/proton-cachyos -b "${PROTON_BRANCH}"
+		git clone -b "${PROTON_BRANCH}" https://github.com/CachyOS/proton-cachyos
+
 	fi
 
 	if [ "${PROTON_BRANCH}" = "experimental_8.0" ]; then
