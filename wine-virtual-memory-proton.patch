@@ -1,8 +1,8 @@
 diff --git a/server/mapping.c b/server/mapping.c
-index a8593de..9cbb0d7 100644
+index a8593de..0ac45d0 100644
 --- a/server/mapping.c
 +++ b/server/mapping.c
-@@ -240,8 +240,24 @@ void free_map_addr( void *addr, size_t size )
+@@ -244,7 +244,7 @@ void free_map_addr( void *addr, size_t size )
      }
  }
 
