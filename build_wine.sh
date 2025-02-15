@@ -326,6 +326,11 @@ elif [ "$WINE_BRANCH" = "proton" ]; then
 
 	if [ "${PROTON_BRANCH}" = "experimental_9.0" ] || [ "${PROTON_BRANCH}" = "bleeding-edge" ]; then
 	 patch -d wine -Np1 < "${scriptdir}"/proton-exp-9.0.patch
+	 patch -d wine -Np1 < "${scriptdir}"/WINE_NO_WM_DECORATION.patch
+	 patch -d wine -Np1 < "${scriptdir}"/PREFER_SDL.patch
+	 patch -d wine -Np1 < "${scriptdir}"/83-nv_low_latency_wine.patch
+	 patch -d wine -Np1 < "${scriptdir}"/47-proton-fshack-AMD-FSR-complete.patch
+	 
 	fi
 
 
