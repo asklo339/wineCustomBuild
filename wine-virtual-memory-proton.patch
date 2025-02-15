@@ -2,31 +2,10 @@ diff --git a/server/mapping.c b/server/mapping.c
 index a8593de..0ac45d0 100644
 --- a/server/mapping.c
 +++ b/server/mapping.c
-@@ -244,7 +244,7 @@ void free_map_addr( void *addr, size_t size )
-     }
- }
-
-+/* Define memory regions in human-readable units */
-+#define KB(n) ((size_t)(n) << 10)
-+#define MB(n) ((size_t)(n) << 20)
-+#define GB(n) ((size_t)(n) << 30)
-+#define TB(n) ((size_t)(n) << 40)
-+
-+/* x86-64 typical user-space memory regions */
-+#define HIGH_MEM_START  0x4000000000     // 256 GB (avoid lower 256GB for heap/stack)
-+#define HIGH_MEM_SIZE   GB(64)           // 64 GB
-+#define LOW_MEM_START   0x60000000       // 1.5 GB
-+#define LOW_MEM_SIZE    MB(448)          // 448 MB (adjust per platform needs)
-+
- void init_memory(void)
+@@ -244,7 +244,7 @@ void init_memory(void)
  {
      page_mask = sysconf( _SC_PAGESIZE ) - 1;
--    free_map_addr( 0x60000000, 0x1c000000 );
+     free_map_addr( 0x60000000, 0x1c000000 );
 -    free_map_addr( 0x600000000000, 0x100000000000 );
-+
-+    if (!free_map_addr( (void *)LOW_MEM_START, LOW_MEM_SIZE ))
-+        server_abort("Failed to unmap low memory region");
-+
-+    if (!free_map_addr( (void *)HIGH_MEM_START, HIGH_MEM_SIZE ))
-+        server_abort("Failed to unmap high memory region");
++    free_map_addr( 0x4000000000, 0x1000000000 );
  }
