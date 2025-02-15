@@ -1,37 +1,21 @@
 diff --git a/dlls/ntdll/unix/server.c b/dlls/ntdll/unix/server.c
-index 88ac9551060..a1b3d7e6b8a 100644
+index 88ac9551060..d750a6b5cd1 100644
 --- a/dlls/ntdll/unix/server.c
 +++ b/dlls/ntdll/unix/server.c
 @@ -1302,8 +1302,10 @@ static int setup_config_dir(void)
      if (!mkdir( "dosdevices", 0777 ))
      {
          mkdir( "drive_c", 0777 );
--        symlink( "../drive_c", "dosdevices/c:" );
++        mkdir( "drive_d", 0777 );
++        symlink( "/sdcard", "dosdevices/d:" );
+         symlink( "../drive_c", "dosdevices/c:" );
 -        symlink( "/", "dosdevices/z:" );
-+
-+        /* Android drive mappings */
-+        const char* android_paths[][2] = {
-+            { "../drive_c", "c:" },      // C: drive
-+            { "/sdcard", "d:" },         // D: for external storage
-+            { "/data/data/com.gebox.emu/files", "z:" }  // Z: for app container
-+        };
-+
-+        for (int i = 0; i < sizeof(android_paths)/sizeof(android_paths[0]); i++)
-+        {
-+            const char *target = android_paths[i][0];
-+            char link[PATH_MAX];
-+            snprintf(link, sizeof(link), "dosdevices/%s", android_paths[i][1]);
-+
-+            if (!access(target, F_OK) && symlink(target, link))
-+                TRACE("Created %s -> %s\n", link, target);
-+            else if (errno != EEXIST)
-+                WARN("Failed to create %s symlink: %s\n", link, strerror(errno));
-+        }
++        symlink( "/data/data/com.gebox.emu/files", "dosdevices/z:" );
      }
      else if (errno != EEXIST) fatal_perror( "cannot create %s/dosdevices", config_dir );
-
+ 
 diff --git a/dlls/ntdll/unix/virtual.c b/dlls/ntdll/unix/virtual.c
-index 02c0bebe879..6d0e3d2f3c9 100644
+index 02c0bebe879..84a12cad4c6 100644
 --- a/dlls/ntdll/unix/virtual.c
 +++ b/dlls/ntdll/unix/virtual.c
 @@ -163,9 +163,9 @@ static void *address_space_start = (void *)0x110000; /* keep DOS area clear */
@@ -41,14 +25,14 @@ index 02c0bebe879..6d0e3d2f3c9 100644
 -static void *address_space_limit = (void *)0x7fffffff0000;  /* top of the total available address space */
 -static void *user_space_limit    = (void *)0x7fffffff0000;  /* top of the user address space */
 -static void *working_set_limit   = (void *)0x7fffffff0000;  /* top of the current working set */
-+static void *address_space_limit = (void *)0x7fffff0000;    /* 2GB for Android compatibility */
-+static void *user_space_limit    = (void *)0x7fffff0000;    /* User space limit */
-+static void *working_set_limit   = (void *)0x7fffff0000;    /* Working set limit */
++static void *address_space_limit = (void *)0x7fffff0000;  /* top of the total available address space */
++static void *user_space_limit    = (void *)0x7fffff0000;  /* top of the user address space */
++static void *working_set_limit   = (void *)0x7fffff0000;  /* top of the current working set */
  #else
  static void *address_space_limit = (void *)0xc0000000;
  static void *user_space_limit    = (void *)0x7fff0000;
 diff --git a/loader/preloader.c b/loader/preloader.c
-index d0551bae63a..0e7c8f4c4b9 100644
+index d0551bae63a..9baa5e090f9 100644
 --- a/loader/preloader.c
 +++ b/loader/preloader.c
 @@ -1447,7 +1447,7 @@ void* wld_start( void **stack )
@@ -56,7 +40,7 @@ index d0551bae63a..0e7c8f4c4b9 100644
              /* don't warn for low 64k */
              if (preload_info[i].addr >= (void *)0x10000
 -#ifdef __aarch64__
-+#if defined(__aarch64__)
++#if 1
                  && preload_info[i].addr < (void *)0x7fffffffff /* ARM64 address space might end here*/
  #endif
              )
