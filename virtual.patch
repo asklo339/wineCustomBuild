@@ -1,5 +1,5 @@
 diff --git a/dlls/ntdll/unix/virtual.c b/dlls/ntdll/unix/virtual.c
-index 2838472..ec53c3b 100644
+index 2838472..e6c7b75 100644
 --- a/dlls/ntdll/unix/virtual.c
 +++ b/dlls/ntdll/unix/virtual.c
 @@ -251,7 +251,7 @@ static inline BOOL is_vprot_exec_write( BYTE vprot )
@@ -7,7 +7,7 @@ index 2838472..ec53c3b 100644
  {
      assert( !((UINT_PTR)start & host_page_mask) );
 -    assert( !(size & host_page_mask) );
-+    
++    size = (size + host_page_mask) & ~host_page_mask;  // Round up to page size
  
      return mmap( start, size, prot, MAP_PRIVATE | MAP_ANON | MAP_FIXED | flags, -1, 0 );
  }
@@ -16,7 +16,7 @@ index 2838472..ec53c3b 100644
  void *anon_mmap_alloc( size_t size, int prot )
  {
 -    assert( !(size & host_page_mask) );
-+    
++    size = (size + host_page_mask) & ~host_page_mask;  // Round up to page size
  
      return mmap( NULL, size, prot, MAP_PRIVATE | MAP_ANON, -1, 0 );
  }
@@ -25,7 +25,7 @@ index 2838472..ec53c3b 100644
  
      assert( !((UINT_PTR)addr & host_page_mask) );
 -    assert( !(size & host_page_mask) );
-+    
++    size = (size + host_page_mask) & ~host_page_mask;  // Round up to page size
  
      if (!((intptr_t)addr + size)) size--;  /* avoid wrap-around */
      end = (char *)addr + size;
@@ -34,19 +34,18 @@ index 2838472..ec53c3b 100644
  
      assert( !((UINT_PTR)addr & host_page_mask) );
 -    assert( !(size & host_page_mask) );
-+    
++    size = (size + host_page_mask) & ~host_page_mask;  // Round up to page size
  
      if (!((intptr_t)addr + size)) size--;  /* avoid wrap-around */
  
-@@ -3417,8 +3417,9 @@ static void *alloc_virtual_heap( SIZE_T size )
+@@ -3417,8 +3417,8 @@ static void *alloc_virtual_heap( SIZE_T size )
  {
      struct reserved_area *area;
      void *ret;
 -
 -    assert( !(size & host_page_mask) );
-+    printf("%d", size);
-+    printf("%d", host_page_mask);
-+    // 
++    
++    size = (size + host_page_mask) & ~host_page_mask;  // Round up to page size
  
      LIST_FOR_EACH_ENTRY_REV( area, &reserved_areas, struct reserved_area, entry )
      {
