@@ -428,6 +428,10 @@ if [ "$TERMUX_GLIBC" = "true" ]; then
     if [ "$WINE_BRANCH" = "staging" ]; then
     echo "Applying esync patch"
     patch -d wine -Np1 < "${scriptdir}"/esync.patch && \
+    echo "Applying disable assert virtual.c patch"
+    patch -d wine -Np1 < "${scriptdir}"/virtual.patch && \
+    echo "Applying disable epoll_pwait2 patch"
+    patch -d wine -Np1 < "${scriptdir}"/disable_epoll_pwait2.patch && \
     echo "Applying address space patch"
     patch -d wine -Np1 < "${scriptdir}"/protonoverrides.patch && \
     echo "Add Proton DLL overrides"
@@ -445,6 +449,10 @@ if [ "$TERMUX_GLIBC" = "true" ]; then
     elif [ "$WINE_BRANCH" = "vanilla" ]; then
     echo "Applying esync patch"
     patch -d wine -Np1 < "${scriptdir}"/esync.patch && \
+    echo "Applying disable assert virtual.c patch"
+    patch -d wine -Np1 < "${scriptdir}"/virtual.patch && \
+    echo "Applying disable epoll_pwait2 patch"
+    patch -d wine -Np1 < "${scriptdir}"/disable_epoll_pwait2.patch && \
     echo "Applying address space patch"
     patch -d wine -Np1 < "${scriptdir}"/protonoverrides.patch && \
     echo "Add Proton DLL overrides"
@@ -545,21 +553,21 @@ patch -p1 < "${scriptdir}"/wine-cpu-topology-tkg.patch || {
 fi
 
 ### Experimental addition to address space hackery
-if [ "$WINE_BRANCH" = "proton" ]; then
-echo "Applying additional address space patch... (credits to Bylaws)"
-patch -p1 < "${scriptdir}"/wine-virtual-memory-proton.patch || {
-        echo "This patch did not apply. Stopping..."
-	exit 1
-    }
-    clear
-else
-echo "Applying additional address space patch... (credits to Bylaws)"
-patch -p1 < "${scriptdir}"/wine-virtual-memory.patch || {
-        echo "This patch did not apply. Stopping..."
-	exit 1
-    }
-    clear
-fi
+##if [ "$WINE_BRANCH" = "proton" ]; then
+##echo "Applying additional address space patch... (credits to Bylaws)"
+##patch -p1 < "${scriptdir}"/wine-virtual-memory-proton.patch || {
+   ##     echo "This patch did not apply. Stopping..."
+##	exit 1
+ ##   }
+ ##   clear
+##else
+##echo "Applying additional address space patch... (credits to Bylaws)"
+##patch -p1 < "${scriptdir}"/wine-virtual-memory.patch || {
+   ##     echo "This patch did not apply. Stopping..."
+##	exit 1
+ ##   }
+##    clear
+##fi
 
 ###
 dlls/winevulkan/make_vulkan
