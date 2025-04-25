@@ -432,8 +432,6 @@ if [ "$TERMUX_GLIBC" = "true" ]; then
     patch -d wine -Np1 < "${scriptdir}"/virtual.patch && \
     echo "Applying disable epoll_pwait2 patch"
     patch -d wine -Np1 < "${scriptdir}"/disable_epoll_pwait2.patch && \
-    echo "Applying auto-resolution.patch"
-    patch -d wine -Np1 < "${scriptdir}"/auto-resolution.patch && \
     echo "Applying address space patch"
     patch -d wine -Np1 < "${scriptdir}"/protonoverrides.patch && \
     echo "Add Proton DLL overrides"
@@ -455,8 +453,6 @@ if [ "$TERMUX_GLIBC" = "true" ]; then
     patch -d wine -Np1 < "${scriptdir}"/virtual.patch && \
     echo "Applying disable epoll_pwait2 patch"
     patch -d wine -Np1 < "${scriptdir}"/disable_epoll_pwait2.patch && \
-    echo "Applying auto-resolution.patch"
-    patch -d wine -Np1 < "${scriptdir}"/auto-resolution.patch && \
     echo "Applying address space patch"
     patch -d wine -Np1 < "${scriptdir}"/protonoverrides.patch && \
     echo "Add Proton DLL overrides"
