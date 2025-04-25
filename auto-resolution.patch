@@ -1,0 +1,129 @@
+diff --git a/dlls/winex11.drv/window.c b/dlls/winex11.drv/window.c
+index 1234567..abcdef0 100644
+--- a/dlls/winex11.drv/window.c
++++ b/dlls/winex11.drv/window.c
+@@ -40,6 +40,8 @@
+ #include "wine/debug.h"
+ #include "wine/server.h"
+ 
++#define AUTO_RESOLUTION_DETECTION 1
++
+ WINE_DEFAULT_DEBUG_CHANNEL(x11drv);
+ 
+ /*-----------------------------------------------------------------------------
+@@ -2345,6 +2347,44 @@ void X11DRV_WindowPosChanged( HWND hwnd, HWND insert_after, UINT swp_flags,
+         }
+     }
+ 
++#ifdef AUTO_RESOLUTION_DETECTION
++    /* Automatic resolution detection and correction for Wine windows */
++    if (data && data->whole_window && !is_virtual_desktop())
++    {
++        RECT window_rect;
++        int scr_width, scr_height;
++        Display *display = thread_display();
++        int screen = DefaultScreen(display);
++        
++        /* Get the current screen resolution */
++        scr_width = DisplayWidth(display, screen);
++        scr_height = DisplayHeight(display, screen);
++        
++        /* Check for common low-resolution settings that should be upgraded */
++        GetWindowRect(hwnd, &window_rect);
++        int win_width = window_rect.right - window_rect.left;
++        int win_height = window_rect.bottom - window_rect.top;
++        
++        /* Look for 800x600 or similarly small windows on larger screens */
++        if ((win_width <= 800 && win_height <= 600) && 
++            (scr_width >= 1024 && scr_height >= 768))
++        {
++            WCHAR class_name[256];
++            GetClassNameW(hwnd, class_name, ARRAY_SIZE(class_name));
++            
++            /* Only target game windows or main application windows */
++            if (GetWindow(hwnd, GW_OWNER) == NULL && 
++                (wcsstr(class_name, L"Wine") || GetWindowLongW(hwnd, GWL_STYLE) & WS_CAPTION))
++            {
++                TRACE("Auto-adjusting small window from %dx%d to match screen better\n", 
++                      win_width, win_height);
++                SetWindowPos(hwnd, 0, 0, 0, scr_width * 0.8, scr_height * 0.8, 
++                             SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
++            }
++        }
++    }
++#endif
++
+     release_win_data( data );
+ }
+ 
+diff --git a/dlls/user32/window.c b/dlls/user32/window.c
+index 7654321..fedcba9 100644
+--- a/dlls/user32/window.c
++++ b/dlls/user32/window.c
+@@ -3652,6 +3652,16 @@ BOOL WINAPI SetWindowPos( HWND hwnd, HWND after, INT x, INT y,
+                        SWP_NOACTIVATE | SWP_NOOWNERZORDER)) return FALSE;
+     }
+ 
++    /* Store original resolution request for logging purposes */
++    static BOOL first_set = TRUE;
++    if (!(flags & SWP_NOSIZE) && first_set && cx <= 800 && cy <= 600)
++    {
++        first_set = FALSE;
++        TRACE("Application initially requested small window size: %dx%d\n", cx, cy);
++        /* We'll let the X11 driver adjust this if appropriate based on screen size */
++    }
++    
+     SERVER_START_REQ( set_window_pos )
+     {
+         req->handle        = wine_server_user_handle( hwnd );
+         req->previous      = wine_server_user_handle( after );
+diff --git a/programs/winecfg/x11drvdlg.c b/programs/winecfg/x11drvdlg.c
+index abcd123..efgh456 100644
+--- a/programs/winecfg/x11drvdlg.c
++++ b/programs/winecfg/x11drvdlg.c
+@@ -182,6 +182,15 @@ INT_PTR CALLBACK X11DrvDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
+                 case IDC_ENABLE_MANAGED:
+                     set_enable_managed(IsDlgButtonChecked(hDlg, IDC_ENABLE_MANAGED));
+                     break;
++                case IDC_AUTO_RESOLUTION:
++                    if (IsDlgButtonChecked(hDlg, IDC_AUTO_RESOLUTION))
++                    {
++                        set_reg_key(config_key, "AutoResolutionDetection", "Y");
++                    }
++                    else
++                    {
++                        set_reg_key(config_key, "AutoResolutionDetection", "N");
++                    }
++                    break;
+             }
+             break;
+         }
+@@ -212,6 +221,16 @@ INT_PTR CALLBACK X11DrvDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
+             CheckDlgButton(hDlg, IDC_ENABLE_DECORATED, get_enable_decorated());
+             CheckDlgButton(hDlg, IDC_ENABLE_MANAGED, get_enable_managed());
+ 
++            /* Add auto-resolution detection checkbox */
++            HWND auto_res_btn = CreateWindowA("BUTTON", 
++                "Automatically adjust window sizes to screen resolution",
++                WS_VISIBLE | WS_CHILD | BS_AUTOCHECKBOX,
++                12, 220, 400, 24, hDlg, (HMENU)IDC_AUTO_RESOLUTION, GetModuleHandleA(NULL), NULL);
++            
++            char buffer[2];
++            if (get_reg_key(config_key, "AutoResolutionDetection", buffer, sizeof(buffer)) && buffer[0] == 'Y')
++                CheckDlgButton(hDlg, IDC_AUTO_RESOLUTION, BST_CHECKED);
++
+             SendMessage(GetDlgItem(hDlg, IDC_DESKTOP_SIZE), CB_ADDSTRING, 0, (LPARAM)"640x480");
+             SendMessage(GetDlgItem(hDlg, IDC_DESKTOP_SIZE), CB_ADDSTRING, 0, (LPARAM)"800x600");
+             SendMessage(GetDlgItem(hDlg, IDC_DESKTOP_SIZE), CB_ADDSTRING, 0, (LPARAM)"1024x768");
+diff --git a/programs/winecfg/resource.h b/programs/winecfg/resource.h
+index 1212121..3434343 100644
+--- a/programs/winecfg/resource.h
++++ b/programs/winecfg/resource.h
+@@ -57,6 +57,7 @@
+ #define IDC_ENABLE_DECORATED            1018
+ #define IDC_ENABLE_MANAGED              1019
+ #define IDC_DLL_SPECIFIC                1020
++#define IDC_AUTO_RESOLUTION             1050
+ 
+ #define IDS_TAB_GRAPHICS                2021
+ #define IDS_TAB_DESKTOP_INTEGRATION     2022
