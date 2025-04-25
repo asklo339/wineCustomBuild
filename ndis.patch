@@ -30,7 +30,7 @@ index 172afbd62b8..d69ce83f829 100644
 +    FILE *file;
 +    struct adapter_info *adapters_info = NULL;
 +    int list_size = 0;
-+    const size_t line_size = 256; /* Increased to handle longer lines */
++    const size_t line_size = 256;
 +    char *line;
 +
 +    *adapter_info_size = 0;
@@ -58,7 +58,7 @@ index 172afbd62b8..d69ce83f829 100644
 +        char *value = strtok( line, "," );
 +        struct adapter_info *adapter_info;
 +
-+        if (!value) continue; /* Skip empty lines */
++        if (!value) continue;
 +
 +        adapters_info = realloc( adapters_info, (list_size + 1) * sizeof(*adapters_info) );
 +        if (!adapters_info)
@@ -74,7 +74,6 @@ index 172afbd62b8..d69ce83f829 100644
 +
 +        while (value && col < 4)
 +        {
-+            /* Use strncpy to prevent buffer overflows */
 +            if (col == 0) strncpy( adapter_info->name, value, sizeof(adapter_info->name) - 1 );
 +            else if (col == 1 && inet_addr( value ) != INADDR_NONE) strncpy( adapter_info->ip_address, value, sizeof(adapter_info->ip_address) - 1 );
 +            else if (col == 2 && inet_addr( value ) != INADDR_NONE) strncpy( adapter_info->netmask, value, sizeof(adapter_info->netmask) - 1 );
@@ -82,7 +81,7 @@ index 172afbd62b8..d69ce83f829 100644
 +            value = strtok( NULL, "," );
 +            col++;
 +        }
-+        if (col == 4 && adapter_info->ip_address[0]) list_size++; /* Only count valid entries */
++        if (col == 4 && adapter_info->ip_address[0]) list_size++;
 +    }
 +
 +    free( line );
@@ -94,7 +93,7 @@ index 172afbd62b8..d69ce83f829 100644
  static char *debugstr_ipv6(const struct sockaddr_in6 *sin, char *buf)
  {
      const IN6_ADDR *addr = &sin->sin6_addr;
-@@ -595,140 +668,186 @@ static void ip_addr_string_init( IP_ADDR_STRING *s, const IN_ADDR *addr, const IN_
+@@ -595,140 +668,186 @@ static void ip_addr_string_init( IP_ADDR_STRING *s, const IN_ADDR *addr, const IN_ADDR *mask, DWORD context )
  */
  DWORD WINAPI GetAdaptersInfo( IP_ADAPTER_INFO *info, ULONG *size )
  {
@@ -219,7 +218,7 @@ index 172afbd62b8..d69ce83f829 100644
 +                                      NULL, 0, NULL, 0, &fwd_count, 0 );
 +        if (err) goto err;
 +
-+        wins_server_count = get_wins servers( &wins_servers );
++        wins_server_count = get_wins_servers( &wins_servers );
 +
 +        extra_ip_addrs = (IP_ADDR_STRING *)(info + if_num);
 +        for (i = 0; i < if_count; i++)
@@ -301,21 +300,25 @@ index 172afbd62b8..d69ce83f829 100644
 +        NsiFreeTable( if_keys, if_rw, NULL, if_stat );
 +        return err;
 +    }
-+}
-+
-+static void address_entry_free( void *ptr, ULONG offset, void *ctxt )
-+@@ -1322,34 +1438,110 @@ err:
-+ULONG WINAPI DECLSPEC_HOTPATCH GetAdaptersAddresses( ULONG family, ULONG flags, void *reserved,
-+                                                     IP_ADAPTER_ADDRESSES *aa, ULONG *size )
-+{
+ }
+ 
+ static void address_entry_free( void *ptr, ULONG offset, void *ctxt )
+@@ -1322,34 +1461,110 @@ err:
+ ULONG WINAPI DECLSPEC_HOTPATCH GetAdaptersAddresses( ULONG family, ULONG flags, void *reserved,
+                                                      IP_ADAPTER_ADDRESSES *aa, ULONG *size )
+ {
+-    IP_ADAPTER_ADDRESSES *info, **sorted;
+-    DWORD err, needed, count;
 +    int adapter_info_size;
 +    struct adapter_info *adapters_info;
 +    DWORD err;
-+
-+    TRACE( "(%ld, %08lx, %p, %p, %p)\n", family, flags, reserved, aa, size );
-+
+
+     TRACE( "(%ld, %08lx, %p, %p, %p)\n", family, flags, reserved, aa, size );
+-    if (!size) return ERROR_INVALID_PARAMETER;
 +    if (!size) return ERROR_INVALID_PARAMETER;
-+
+
+-    err = adapters_addresses_alloc( family, flags, &info, &count );
+-    if (err) return err;
 +    adapters_info = read_adapters_info_from_file( &adapter_info_size, &err );
 +    if (adapters_info && adapter_info_size > 0)
 +    {
@@ -368,7 +371,7 @@ index 172afbd62b8..d69ce83f829 100644
 +            aa->FriendlyName = friendly_name;
 +            aa->PhysicalAddressLength = 6;
 +            memset( aa->PhysicalAddress, 0, sizeof(aa->PhysicalAddress) );
-+            aa->Mtu = 1500; /* Standard MTU */
++            aa->Mtu = 1500;
 +            aa->IfType = IF_TYPE_IEEE80211;
 +            aa->OperStatus = IfOperStatusUp;
 +            aa->TransmitLinkSpeed = 144400000;
@@ -446,6 +449,6 @@ index 172afbd62b8..d69ce83f829 100644
 +        adapters_addresses_free( info );
 +        return err;
 +    }
-+}
-+
-+/******************************************************************
+ }
+ 
+ /******************************************************************
