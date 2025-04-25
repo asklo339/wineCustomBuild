@@ -1,5 +1,3 @@
-diff --git a/server/fd.c b/server/fd.c
-index e1b969a..f93fa89 100644
 --- a/server/fd.c
 +++ b/server/fd.c
 @@ -582,7 +582,7 @@ static inline void main_loop_epoll(void)
