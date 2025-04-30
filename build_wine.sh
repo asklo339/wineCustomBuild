@@ -98,20 +98,17 @@ export WINE_BUILD_OPTIONS="--disable-winemenubuilder --disable-win16 --enable-wi
 # This directory is removed and recreated on each script run.
 export BUILD_DIR="${HOME}"/build_wine
 
-echo "$WINE_BRANCH"
-echo "$PROTON_BRANCH"
-
 # Implement a new WoW64 specific check which will change the way Wine is built.
 # New WoW64 builds will use a different bootstrap which require different
 # variables and they are not compatible with old WoW64 build mode.
 if [ "${EXPERIMENTAL_WOW64}" = "true" ]; then
 
-   export BOOTSTRAP_X64=/opt/chroots/noble64_chroot
+   export BOOTSTRAP_X64=/opt/chroots/plucky64_chroot
 
    export scriptdir="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 
-   export CC="gcc-14"
-   export CXX="g++-14"
+   export CC="gcc-15"
+   export CXX="g++-15"
    
    export CROSSCC_X64="x86_64-w64-mingw32-gcc"
    export CROSSCXX_X64="x86_64-w64-mingw32-g++"
@@ -142,7 +139,7 @@ if [ "${EXPERIMENTAL_WOW64}" = "true" ]; then
    build_with_bwrap () {
 		BOOTSTRAP_PATH="${BOOTSTRAP_X64}"
 
-    bwrap --ro-bind "${BOOTSTRAP_PATH}" / --dev /dev --ro-bind /sys /sys \
+    sudo bwrap --ro-bind "${BOOTSTRAP_PATH}" / --dev /dev --ro-bind /sys /sys \
 		  --proc /proc --tmpfs /tmp --tmpfs /home --tmpfs /run --tmpfs /var \
 		  --tmpfs /mnt --tmpfs /media --bind "${BUILD_DIR}" "${BUILD_DIR}" \
 		  --bind-try "${XDG_CACHE_HOME}"/ccache "${XDG_CACHE_HOME}"/ccache \
@@ -257,7 +254,7 @@ fi
 
 # Replace the "latest" parameter with the actual latest Wine version
 if [ "${WINE_VERSION}" = "latest" ] || [ -z "${WINE_VERSION}" ]; then
-	WINE_VERSION="$(wget -q -O - "https://raw.githubusercontent.com/wine-mirror/wine/master/VERSION" | tail -c +14)"
+	WINE_VERSION="$(echo "$(wget -q -O - "https://raw.githubusercontent.com/wine-mirror/wine/master/VERSION" | tail -c +14) - 0.2" | bc)"
 fi
 
 # Stable and Development versions have a different source code location
@@ -315,7 +312,7 @@ elif [ "$WINE_BRANCH" = "wayland" ]; then
                                ${WINE_BUILD_OPTIONS}"
 elif [ "$WINE_BRANCH" = "proton" ]; then
 	if [ -z "${PROTON_BRANCH}" ]; then
-		https://github.com/ValveSoftware/wine
+		git clone https://github.com/ValveSoftware/wine
 	else
 		git clone https://github.com/ValveSoftware/wine -b "${PROTON_BRANCH}"
 	fi
@@ -324,9 +321,9 @@ elif [ "$WINE_BRANCH" = "proton" ]; then
 		patch -d wine -Np1 < "${scriptdir}"/proton-exp-8.0.patch
 	fi
 
-	#if [ "${PROTON_BRANCH}" = "experimental_9.0" ] || [ "${PROTON_BRANCH}" = "bleeding-edge" ]; then
-	# patch -d wine -Np1 < "${scriptdir}"/proton-exp-9.0.patch
-	#fi
+	if [ "${PROTON_BRANCH}" = "experimental_9.0" ] || [ "${PROTON_BRANCH}" = "bleeding-edge" ]; then
+	 patch -d wine -Np1 < "${scriptdir}"/proton-exp-9.0.patch
+	fi
 
 
 	WINE_VERSION="$(cat wine/VERSION | tail -c +14)-$(git -C wine rev-parse --short HEAD)"
@@ -395,6 +392,14 @@ fi
     STAGING_ARGS="eventfd_synchronization winecfg_Staging"
    elif [ "$TERMUX_GLIBC" = "true" ] && [ "${WINE_BRANCH}" = "vanilla" ]; then
     STAGING_ARGS="eventfd_synchronization winecfg_Staging"
+   elif [ "$TERMUX_PROOT" = "true" ] && [ "${WINE_BRANCH}" = "vanilla" ]; then
+    STAGING_ARGS="eventfd_synchronization winecfg_Staging"
+   elif [ "$TERMUX_PROOT" = "true" ] && [ "${WINE_BRANCH}" = "staging" ]; then
+    STAGING_ARGS="--all -W ntdll-Syscall_Emulation"
+   elif [ "$TERMUX_PROOT" = "true" ] && [ "$WINE_BRANCH" = "staging" ] && [ "${EXPERIMENTAL_WOW64}" = "true" ]; then
+    STAGING_ARGS="--all -W ntdll-Syscall_Emulation"
+   elif [ "$TERMUX_PROOT" = "true" ] && [ "$WINE_BRANCH" = "vanilla" ] && [ "${EXPERIMENTAL_WOW64}" = "true" ]; then
+    STAGING_ARGS="eventfd_synchronization winecfg_Staging"
     fi
 
 		cd wine || exit 1
@@ -423,10 +428,6 @@ if [ "$TERMUX_GLIBC" = "true" ]; then
     if [ "$WINE_BRANCH" = "staging" ]; then
     echo "Applying esync patch"
     patch -d wine -Np1 < "${scriptdir}"/esync.patch && \
-    echo "Applying disable assert virtual.c patch"
-    patch -d wine -Np1 < "${scriptdir}"/virtual.patch && \
-    echo "Applying disable epoll_pwait2 patch"
-    patch -d wine -Np1 < "${scriptdir}"/disable_epoll_pwait2.patch && \
     echo "Applying address space patch"
     patch -d wine -Np1 < "${scriptdir}"/protonoverrides.patch && \
     echo "Add Proton DLL overrides"
@@ -444,10 +445,6 @@ if [ "$TERMUX_GLIBC" = "true" ]; then
     elif [ "$WINE_BRANCH" = "vanilla" ]; then
     echo "Applying esync patch"
     patch -d wine -Np1 < "${scriptdir}"/esync.patch && \
-    echo "Applying disable assert virtual.c patch"
-    patch -d wine -Np1 < "${scriptdir}"/virtual.patch && \
-    echo "Applying disable epoll_pwait2 patch"
-    patch -d wine -Np1 < "${scriptdir}"/disable_epoll_pwait2.patch && \
     echo "Applying address space patch"
     patch -d wine -Np1 < "${scriptdir}"/protonoverrides.patch && \
     echo "Add Proton DLL overrides"
@@ -485,17 +482,30 @@ if [ "$TERMUX_GLIBC" = "true" ]; then
     echo "Applying path change patch"
     ## Proton is based on Wine 9.0 stable release so some of the updates
     ## for patches are not required.
-  #  patch -d wine -Np1 < "${scriptdir}"/pathfix-wine9.5.patch || {
-     #   echo "Error: Failed to apply one or more patches."
-    #    exit 1
-   # }
+    patch -d wine -Np1 < "${scriptdir}"/pathfix.patch || {
+        echo "Error: Failed to apply one or more patches."
+        exit 1
+    }
     clear 
 fi
 fi
     
 # NDIS patch for fixing crappy Android's SELinux limitations.
-#if [ "$WINE_BRANCH" != "proton" ]; then
-
+if [ "$WINE_BRANCH" != "proton" ]; then
+echo "Circumventing crappy SELinux's limitations... (Thanks BrunoSX)"
+patch -d wine -Np1 < "${scriptdir}"/ndis.patch || {
+        echo "Error: Failed to apply one or more patches."
+        exit 1
+    }
+    clear
+else
+echo "Circumventing crappy SELinux's limitations... (Thanks BrunoSX)"
+patch -d wine -Np1 < "${scriptdir}"/ndis_proton.patch || {
+        echo "Error: Failed to apply one or more patches."
+        exit 1
+    }
+    clear
+fi
 
 if [ ! -d wine ]; then
 	clear
@@ -535,21 +545,21 @@ patch -p1 < "${scriptdir}"/wine-cpu-topology-tkg.patch || {
 fi
 
 ### Experimental addition to address space hackery
-##if [ "$WINE_BRANCH" = "proton" ]; then
-##echo "Applying additional address space patch... (credits to Bylaws)"
-##patch -p1 < "${scriptdir}"/wine-virtual-memory-proton.patch || {
-   ##     echo "This patch did not apply. Stopping..."
-##	exit 1
- ##   }
- ##   clear
-##else
-##echo "Applying additional address space patch... (credits to Bylaws)"
-##patch -p1 < "${scriptdir}"/wine-virtual-memory.patch || {
-   ##     echo "This patch did not apply. Stopping..."
-##	exit 1
- ##   }
-##    clear
-##fi
+#if [ "$WINE_BRANCH" = "proton" ]; then
+#echo "Applying additional address space patch... (credits to Bylaws)"
+#patch -p1 < "${scriptdir}"/wine-virtual-memory-proton.patch || {
+#        echo "This patch did not apply. Stopping..."
+#	exit 1
+#    }
+#    clear
+#else
+#echo "Applying additional address space patch... (credits to Bylaws)"
+#patch -p1 < "${scriptdir}"/wine-virtual-memory.patch || {
+#        echo "This patch did not apply. Stopping..."
+#	exit 1
+#    }
+#    clear
+#fi
 
 ###
 dlls/winevulkan/make_vulkan
@@ -603,6 +613,7 @@ export CROSSCXXFLAGS="${CROSSCFLAGS_X64}"
 
 mkdir "${BUILD_DIR}"/build64
 cd "${BUILD_DIR}"/build64 || exit
+${BWRAP64} apt install libdrm-dev
 ${BWRAP64} "${BUILD_DIR}"/wine/configure --enable-archs=i386,x86_64 ${WINE_BUILD_OPTIONS} --prefix "${BUILD_DIR}"/wine-"${BUILD_NAME}"-amd64
 ${BWRAP64} make -j8
 ${BWRAP64} make install
@@ -663,6 +674,8 @@ fi
 
 export XZ_OPT="-9"
 mkdir results
+sudo chown -R $(whoami) wine-${BUILD_NAME}-amd64
+sudo chmod -R 777 wine-${BUILD_NAME}-amd64
 mv wine-${BUILD_NAME}-amd64 results/wine
 
 if [ -d "results/wine" ]; then
@@ -677,7 +690,7 @@ if [ -d "results/wine" ]; then
     cd -
 fi
 
-rm -rf "${BUILD_DIR}"
+sudo rm -rf "${BUILD_DIR}"
 
 echo
 echo "Done"
