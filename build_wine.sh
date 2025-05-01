@@ -493,22 +493,7 @@ if [ "$TERMUX_GLIBC" = "true" ]; then
 fi
 fi
     
-# NDIS patch for fixing crappy Android's SELinux limitations.
-if [ "$WINE_BRANCH" != "proton" ]; then
-echo "Circumventing crappy SELinux's limitations... (Thanks BrunoSX)"
-patch -d wine -Np1 < "${scriptdir}"/ndis.patch || {
-        echo "Error: Failed to apply one or more patches."
-        exit 1
-    }
-    clear
-else
-echo "Circumventing crappy SELinux's limitations... (Thanks BrunoSX)"
-patch -d wine -Np1 < "${scriptdir}"/ndis_proton.patch || {
-        echo "Error: Failed to apply one or more patches."
-        exit 1
-    }
-    clear
-fi
+
 
 if [ ! -d wine ]; then
 	clear
