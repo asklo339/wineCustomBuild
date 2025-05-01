@@ -83,27 +83,6 @@ diff -uNr a/dlls/ntdll/unix/server.c b/dlls/ntdll/unix/server.c
  #endif
      return dir;
  }
-diff -uNr a/programs/winebrowser/main.c b/programs/winebrowser/main.c
---- a/programs/winebrowser/main.c
-+++ b/programs/winebrowser/main.c
-@@ -116,6 +116,7 @@
- {
-     static const WCHAR defaultbrowsers[] =
-         L"xdg-open\0"
-+        "/data/data/com.gebox.emu/files/usr/glibc/bin/open\0"
-         "/usr/bin/open\0"
-         "firefox\0"
-         "konqueror\0"
-@@ -141,7 +142,8 @@
- static int open_mailto_url( const WCHAR *url )
- {
-     static const WCHAR defaultmailers[] =
--        L"/usr/bin/open\0"
-+        L"/data/data/com.gebox.emu/files/usr/glibc/bin/open"
-+        "/usr/bin/open\0"
-         "xdg-email\0"
-         "mozilla-thunderbird\0"
-         "thunderbird\0"
 diff -uNr a/programs/winemenubuilder/winemenubuilder.c b/programs/winemenubuilder/winemenubuilder.c
 --- a/programs/winemenubuilder/winemenubuilder.c
 +++ b/programs/winemenubuilder/winemenubuilder.c
