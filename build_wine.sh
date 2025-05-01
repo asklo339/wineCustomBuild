@@ -472,8 +472,8 @@ if [ "$TERMUX_GLIBC" = "true" ]; then
     }
     clear 
     elif [ "$WINE_BRANCH" = "proton" ]; then
-    #echo "Applying esync patch"
-   # patch -d wine -Np1 < "${scriptdir}"/esync.patch && \
+    echo "Applying esync patch"
+    patch -d wine -Np1 < "${scriptdir}"/esync.patch && \
     echo "Applying address space patch"
     patch -d wine -Np1 < "${scriptdir}"/termux-wine-fix.patch && \
     echo "Applying path change patch"
