@@ -636,4 +636,29 @@ cd "${BUILD_DIR}" || exit 1
 
 if touch "${scriptdir}"/write_test; then
 	rm -f "${scriptdir}"/write_test
-	result_dir="${scriptdir
+	result_dir="${scriptdir}"
+else
+	result_dir="${HOME}"
+fi
+
+export XZ_OPT="-9"
+mkdir results
+mv wine-${BUILD_NAME}-amd64 results/wine
+
+if [ -d "results/wine" ]; then
+    rm -rf results/wine/include results/wine/share/applications results/wine/share/man
+
+    if [ -f wine/wine-tkg-config.txt ]; then
+        cp results/wine/wine-tkg-config.txt results/wine
+    fi
+    cd results
+    tar -Jcf "wine-action-${WINE_BRANCH}".tar.xz wine
+    mv "wine-action-${WINE_BRANCH}".tar.xz "${result_dir}"
+    cd -
+fi
+
+rm -rf "${BUILD_DIR}"
+
+echo
+echo "Done"
+echo "The builds should be in ${result_dir}"
