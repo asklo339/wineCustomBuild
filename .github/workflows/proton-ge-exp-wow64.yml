@@ -35,16 +35,48 @@ jobs:
           path: ./
       - name: Build Wine
         run: |
-          sudo apt update &>/dev/null
-          sudo apt install debootstrap perl git wget xz-utils bubblewrap autoconf automake libtool &>/dev/null
+          # Debug: List working directory and initial state
+          echo "Current directory: $(pwd)"
+          echo "Directory contents:"
+          ls -la
+          
+          # Update and install dependencies
+          sudo apt update
+          sudo apt install -y debootstrap perl git wget xz-utils bubblewrap autoconf automake libtool build-essential
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_unconfined=0
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-          sudo tar -C /opt -xpf "/opt/Bootstraps WoW64/bootstraps_wow64.tar.xz" &>/dev/null
+          
+          # Check if bootstrap exists and extract it
+          echo "Checking for bootstrap file..."
+          ls -la /opt/Bootstraps\ WoW64/ || echo "Bootstrap directory not found"
+          
+          if [ -f "/opt/Bootstraps WoW64/bootstraps_wow64.tar.xz" ]; then
+            echo "Extracting bootstrap..."
+            sudo tar -C /opt -xpf "/opt/Bootstraps WoW64/bootstraps_wow64.tar.xz"
+          else
+            echo "ERROR: Bootstrap file not found!"
+            exit 1
+          fi
+          
           # Create BUILD_DIR and move Proton source
           mkdir -p "${HOME}/build_wine"
-          mv "PROTON-GE SRC WoW64" "${HOME}/build_wine/wine"
-          sudo chmod -R +x "${HOME}/build_wine/wine"
+          
+          # Debug: Check if source directory exists
+          echo "Checking for Proton source directory..."
+          ls -la | grep "PROTON-GE SRC WoW64" || echo "Proton source directory not found"
+          
+          if [ -d "PROTON-GE SRC WoW64" ]; then
+            mv "PROTON-GE SRC WoW64" "${HOME}/build_wine/wine"
+            sudo chmod -R +x "${HOME}/build_wine/wine"
+          else
+            echo "ERROR: Proton source directory not found!"
+            exit 1
+          fi
+          
           # Copy patch files to ${HOME}/build_wine
+          echo "Copying patch files..."
+          ls -la *.patch protonprep-valve-staging.sh || echo "One or more patch files missing"
+          
           cp proton-GE-drivepatch.patch protonprep-valve-staging.sh termux-wine-fix-protonge.patch \
              path-patch-universalPGE.patch ndis_proton.patch wine-virtual-memory-proton.patch \
              esync-GE.patch looserexceptionhandling_protonGE.patch "${HOME}/build_wine" || {
@@ -52,43 +84,115 @@ jobs:
             ls -la
             exit 1
           }
+          
           cd "${HOME}/build_wine/wine"
-          # Debug: List directory contents
-          echo "Listing ${HOME}/build_wine contents:"
-          ls -la "${HOME}/build_wine"
+          echo "Now in directory: $(pwd)"
+          echo "Directory contents:"
+          ls -la
+          
+          # Initialize git and setup repository
           git init
           git remote add origin http://github.com/gloriouseggroll/proton-ge-custom
           git fetch origin
           git reset --hard origin/master
+          
+          # Copy patches to appropriate directories
+          echo "Setting up patches..."
           cp ../proton-GE-drivepatch.patch ./wine-staging/patches/ntdll-ext4-case-folder/0002-ntdll-server-Mark-drive_c-as-case-insensitive-when-c.patch
           cp ../protonprep-valve-staging.sh ./patches/protonprep-valve-staging.sh
-          mkdir ./patches/termux-patches
-          cp ../termux-wine-fix-protonge.patch patches/termux-patches
-          cp ../path-patch-universalPGE.patch patches/termux-patches
-          cp ../ndis_proton.patch patches/termux-patches
-          cp ../wine-virtual-memory-proton.patch patches/termux-patches
-          cp ../esync-GE.patch patches/termux-patches
-          cp ../looserexceptionhandling_protonGE.patch patches/termux-patches
+          mkdir -p ./patches/termux-patches
+          cp ../termux-wine-fix-protonge.patch ./patches/termux-patches/
+          cp ../path-patch-universalPGE.patch ./patches/termux-patches/
+          cp ../ndis_proton.patch ./patches/termux-patches/
+          cp ../wine-virtual-memory-proton.patch ./patches/termux-patches/
+          cp ../esync-GE.patch ./patches/termux-patches/
+          cp ../looserexceptionhandling_protonGE.patch ./patches/termux-patches/
+          
           sudo chmod +x -R ./patches/termux-patches
           sudo chmod +x ./patches/protonprep-valve-staging.sh
-          ./patches/protonprep-valve-staging.sh
+          
+          echo "Running protonprep-valve-staging.sh..."
+          # Debug the script contents before running
+          echo "Script contents:"
+          cat ./patches/protonprep-valve-staging.sh | head -20
+          
+          # Run the script with debugging
+          bash -x ./patches/protonprep-valve-staging.sh
+          
+          # Make file modifications
+          echo "Applying file modifications..."
           sed -i 's/tar.gz/tar.xz/' ./Makefile.in
           sed -i 's/tar -cvzf $(BUILD_NAME).tar.xz $(BUILD_NAME)/tar -cvzf \$\(BUILD_NAME\).tar.xz \$\(BUILD_NAME\)\/*/' ./Makefile.in
-          sed -i 's/W_TMP_EARLY=.*/\W_TMP_EARLY="\/data\/data\/com.gebox.emu\/files\/usr\/tmp\"/' protonfixes/winetricks
+          
+          # Check if winetricks exists
+          if [ -f "protonfixes/winetricks" ]; then
+            sed -i 's/W_TMP_EARLY=.*/\W_TMP_EARLY="\/data\/data\/com.gebox.emu\/files\/usr\/tmp\"/' protonfixes/winetricks
+          else
+            echo "WARNING: protonfixes/winetricks not found"
+          fi
+          
           sed -i -E "$(sed -n '/mv $(REDIST_DIR) $(BUILD_NAME)/=' ./Makefile.in) i\\\tmv \$\(REDIST_DIR\)\/files \$\(REDIST_DIR\)\/wine" ./Makefile.in
-          # Fixed the problematic sed command
-          sed -i -E "$(($(sed -n '/ -w/=' default_pfx.py 2>/dev/null) - 2)) i\\    subprocess.run(runtime_args + [\"/bin/bash\", \"-c\", \"mkdir -p build && cd build\"])" default_pfx.py
-          ../configure.sh --build-name=wine-action-proton-GE --container-engine=podman &>/dev/null
+          
+          # Fix the problematic sed command
+          if [ -f "default_pfx.py" ]; then
+            W_LINE=$(sed -n '/ -w/=' default_pfx.py 2>/dev/null)
+            if [ -n "$W_LINE" ]; then
+              W_LINE=$((W_LINE - 2))
+              echo "Found -w flag at line $W_LINE, modifying default_pfx.py"
+              sed -i -E "${W_LINE} i\\    subprocess.run(runtime_args + [\"/bin/bash\", \"-c\", \"mkdir -p build && cd build\"])" default_pfx.py
+            else
+              echo "WARNING: Could not find -w pattern in default_pfx.py"
+            fi
+          else
+            echo "WARNING: default_pfx.py not found"
+          fi
+          
+          # Look for configure.sh
+          echo "Looking for configure.sh..."
+          find .. -name "configure.sh" || echo "configure.sh not found"
+          
+          if [ -f "../configure.sh" ]; then
+            echo "Running configure.sh..."
+            ../configure.sh --build-name=wine-action-proton-GE --container-engine=podman || echo "Configure failed with exit code $?"
+          else
+            echo "ERROR: configure.sh not found in expected location!"
+            find "${HOME}/build_wine" -name "configure.sh"
+            exit 1
+          fi
+          
           cd ../..
+          
+          # Check if build_protonGE.sh exists
+          echo "Checking for build_protonGE.sh..."
+          find "${HOME}/build_wine" -name "build_protonGE.sh" || echo "build_protonGE.sh not found"
+          
           # Copy and run build_protonGE.sh
-          cp ./build_protonGE.sh "${HOME}/build_wine/wine"
-          cd "${HOME}/build_wine/wine"
-          chmod +x build_protonGE.sh
-          ./build_protonGE.sh
+          if [ -f "./build_protonGE.sh" ]; then
+            cp ./build_protonGE.sh "${HOME}/build_wine/wine/"
+            cd "${HOME}/build_wine/wine"
+            chmod +x build_protonGE.sh
+            echo "Running build_protonGE.sh..."
+            # Add debug flags
+            bash -x ./build_protonGE.sh
+          else
+            echo "ERROR: build_protonGE.sh not found!"
+            exit 1
+          fi
+          
+          # Check if build produced the expected output
+          echo "Checking for build output..."
+          find "${HOME}/build_wine" -name "*.tar.xz" || echo "tar.xz not found"
+          
           # Move result to workspace for upload
-          mv "${HOME}/build_wine/wine-action-protonGE.tar.xz" .
+          if [ -f "${HOME}/build_wine/wine-action-proton-GE.tar.xz" ]; then
+            mv "${HOME}/build_wine/wine-action-proton-GE.tar.xz" .
+            echo "Build completed successfully!"
+          else
+            echo "ERROR: Build output not found!"
+            exit 1
+          fi
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: Proton
           files: |
-            ./wine-action-protonGE.tar.xz
+            ./wine-action-proton-GE.tar.xz
