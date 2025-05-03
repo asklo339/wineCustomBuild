@@ -1,4 +1,4 @@
-name: Proton init
+name: Proton GE init
 
 permissions:
   contents: write
@@ -19,8 +19,8 @@ jobs:
       - uses: actions/checkout@v3
       - name: Build Wine
         run: |
-          git clone --recurse-submodules https://github.com/bylaws/wine -b arm64ec-10
+          git clone --recurse-submodules http://github.com/gloriouseggroll/proton-ge-custom wine
       - uses: actions/upload-artifact@v4
         with:
-          name: PROTON SRC WoW64
+          name: PROTON-GE SRC WoW64
           path: ./wine
