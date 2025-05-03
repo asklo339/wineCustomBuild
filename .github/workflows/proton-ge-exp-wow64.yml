@@ -151,9 +151,9 @@ jobs:
           echo "Looking for configure.sh..."
           find .. -name "configure.sh" || echo "configure.sh not found"
           
-          if [ -f "../configure.sh" ]; then
+          if [ -f "./configure.sh" ]; then
             echo "Running configure.sh..."
-            ../configure.sh --build-name=wine-action-proton-GE --container-engine=podman || echo "Configure failed with exit code $?"
+            ./configure.sh --build-name=wine-action-proton-GE --container-engine=podman || echo "Configure failed with exit code $?"
           else
             echo "ERROR: configure.sh not found in expected location!"
             find "${HOME}/build_wine" -name "configure.sh"
