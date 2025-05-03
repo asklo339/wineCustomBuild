@@ -98,7 +98,18 @@ jobs:
           
           # Copy patches to appropriate directories
           echo "Setting up patches..."
+          # Check if wine-staging/patches directory exists
+          if [ ! -d "./wine-staging/patches/ntdll-ext4-case-folder" ]; then
+            mkdir -p "./wine-staging/patches/ntdll-ext4-case-folder"
+          fi
+          
           cp ../proton-GE-drivepatch.patch ./wine-staging/patches/ntdll-ext4-case-folder/0002-ntdll-server-Mark-drive_c-as-case-insensitive-when-c.patch
+          
+          # Check if patches directory exists
+          if [ ! -d "./patches" ]; then
+            mkdir -p "./patches"
+          fi
+          
           cp ../protonprep-valve-staging.sh ./patches/protonprep-valve-staging.sh
           mkdir -p ./patches/termux-patches
           cp ../termux-wine-fix-protonge.patch ./patches/termux-patches/
@@ -114,7 +125,7 @@ jobs:
           echo "Running protonprep-valve-staging.sh..."
           # Debug the script contents before running
           echo "Script contents:"
-          cat ./patches/protonprep-valve-staging.sh | head -20
+          head -20 ./patches/protonprep-valve-staging.sh
           
           # Run the script with debugging
           bash -x ./patches/protonprep-valve-staging.sh
@@ -149,43 +160,56 @@ jobs:
           
           # Look for configure.sh
           echo "Looking for configure.sh..."
-          find .. -name "configure.sh" || echo "configure.sh not found"
+          find .. -name "configure.sh"
           
-          if [ -f "./configure.sh" ]; then
-            echo "Running configure.sh..."
-            ./configure.sh --build-name=wine-action-proton-GE --container-engine=podman || echo "Configure failed with exit code $?"
+          # Create a build directory as configure.sh requires out-of-tree build
+          mkdir -p build
+          cd build
+          echo "Running configure.sh from build directory: $(pwd)"
+          
+          # Run configure.sh from build directory
+          if [ -f "../configure.sh" ]; then
+            ../configure.sh --build-name=wine-action-proton-GE --container-engine=podman || echo "Configure failed with exit code $?"
           else
             echo "ERROR: configure.sh not found in expected location!"
             find "${HOME}/build_wine" -name "configure.sh"
             exit 1
           fi
           
-          cd ../..
+          # Return to wine directory
+          cd ..
           
-          # Check if build_protonGE.sh exists
-          echo "Checking for build_protonGE.sh..."
-          find "${HOME}/build_wine" -name "build_protonGE.sh" || echo "build_protonGE.sh not found"
+          # Create build_protonGE.sh if it doesn't exist
+          echo "Creating build_protonGE.sh script..."
+          cat > build_protonGE.sh << 'EOF'
+#!/bin/bash
+set -e
+
+# Get to the build directory
+cd build
+
+# Make and install
+make -j$(nproc)
+make install DESTDIR="${HOME}/build_wine/wine-action-proton-GE"
+
+# Create tarball
+cd ..
+tar -cvJf wine-action-proton-GE.tar.xz wine-action-proton-GE/
+EOF
+
+          chmod +x build_protonGE.sh
+          echo "Running build_protonGE.sh..."
           
-          # Copy and run build_protonGE.sh
-          if [ -f "./build_protonGE.sh" ]; then
-            cp ./build_protonGE.sh "${HOME}/build_wine/wine/"
-            cd "${HOME}/build_wine/wine"
-            chmod +x build_protonGE.sh
-            echo "Running build_protonGE.sh..."
-            # Add debug flags
-            bash -x ./build_protonGE.sh
-          else
-            echo "ERROR: build_protonGE.sh not found!"
-            exit 1
-          fi
+          # Run the build script with debug output
+          bash -x ./build_protonGE.sh
           
           # Check if build produced the expected output
           echo "Checking for build output..."
-          find "${HOME}/build_wine" -name "*.tar.xz" || echo "tar.xz not found"
+          find "${HOME}/build_wine" -name "*.tar.xz"
           
           # Move result to workspace for upload
-          if [ -f "${HOME}/build_wine/wine-action-proton-GE.tar.xz" ]; then
-            mv "${HOME}/build_wine/wine-action-proton-GE.tar.xz" .
+          if [ -f "${HOME}/build_wine/wine/wine-action-proton-GE.tar.xz" ]; then
+            cp "${HOME}/build_wine/wine/wine-action-proton-GE.tar.xz" "${GITHUB_WORKSPACE}/"
             echo "Build completed successfully!"
           else
             echo "ERROR: Build output not found!"
