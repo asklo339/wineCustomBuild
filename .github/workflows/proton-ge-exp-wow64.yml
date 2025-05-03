@@ -30,21 +30,30 @@ jobs:
         uses: dawidd6/action-download-artifact@v2
         continue-on-error: true
         with:
-          workflow: proton-gitint.yml
+          workflow: proton-ge-init.yml
           workflow_conclusion: success
           path: ./
       - name: Build Wine
         run: |
           sudo apt update &>/dev/null
           sudo apt install debootstrap perl git wget xz-utils bubblewrap autoconf automake libtool &>/dev/null
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_unconfined=0
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           sudo tar -C /opt -xpf "/opt/Bootstraps WoW64/bootstraps_wow64.tar.xz" &>/dev/null
           # Create BUILD_DIR and move Proton source
           mkdir -p "${HOME}/build_wine"
           mv "PROTON-GE SRC WoW64" "${HOME}/build_wine/wine"
           sudo chmod -R +x "${HOME}/build_wine/wine"
+          # Copy patch files to ${HOME}/build_wine
+          cp proton-GE-drivepatch.patch protonprep-valve-staging.sh termux-wine-fix-protonge.patch \
+             path-patch-universalPGE.patch ndis_proton.patch wine-virtual-memory-proton.patch \
+             esync-GE.patch looserexceptionhandling_protonGE.patch "${HOME}/build_wine" || {
+            echo "Error: One or more patch files are missing in the repository root!"
+            ls -la
+            exit 1
+          }
           cd "${HOME}/build_wine/wine"
+          # Debug: List directory contents
+          echo "Listing ${HOME}/build_wine contents:"
+          ls -la "${HOME}/build_wine"
           git init
           git remote add origin http://github.com/gloriouseggroll/proton-ge-custom
           git fetch origin
@@ -55,7 +64,7 @@ jobs:
           cp ../termux-wine-fix-protonge.patch patches/termux-patches
           cp ../path-patch-universalPGE.patch patches/termux-patches
           cp ../ndis_proton.patch patches/termux-patches
-          cp ../wine-virtual-memory-proton.patch patches/termux-patches          
+          cp ../wine-virtual-memory-proton.patch patches/termux-patches
           cp ../esync-GE.patch patches/termux-patches
           cp ../looserexceptionhandling_protonGE.patch patches/termux-patches
           sudo chmod +x -R ./patches/termux-patches
@@ -63,10 +72,9 @@ jobs:
           ./patches/protonprep-valve-staging.sh
           sed -i 's/tar.gz/tar.xz/' ./Makefile.in
           sed -i 's/tar -cvzf $(BUILD_NAME).tar.xz $(BUILD_NAME)/tar -cvzf \$\(BUILD_NAME\).tar.xz \$\(BUILD_NAME\)\/*/' ./Makefile.in
-          sed -i 's/W_TMP_EARLY=.*/\W_TMP_EARLY="\/data\/data\/com.gebox.emu\/files\/usr\/tmp\"/' protonfixes/winetricks
+          sed -i 's/W_TMP_EARLY=.*/\W_TMP_EARLY="\/data\/data\/com.termux\/files\/usr\/tmp\"/' protonfixes/winetricks
           sed -i -E "$(sed -n '/mv $(REDIST_DIR) $(BUILD_NAME)/=' ./Makefile.in) i\\\tmv \$\(REDIST_DIR\)\/files \$\(REDIST_DIR\)\/wine" ./Makefile.in
-          sed -i -E "$(($(sed -n '/ -w/=' default_pfx.py) - 2)) i\    subprocess.run(runtime_args + [\"/bin/bash\", \"-c\",\n        \"mkdir -p /data/data/com.gebox.emu/files/usr/tmp/.wine && chmod 700 /data/data/com.gebox.emu/files/usr/tmp/.wine\"],\n        env=local_env, check=True)\n" ./default_pfx.py
-          mkdir build && cd build
+          sed -i -E "$(($(sed 2> /dev/null sed -n '/ -w/=' default_pfx.py) - 2)) i\    subprocess.run(runtime_args + [\"/bin/bash\", \"-c\",\n        \"mkdir -def build && cd build
           ../configure.sh --build-name=wine-action-proton-GE --container-engine=podman &>/dev/null
           cd ../..
           # Copy and run build_protonGE.sh
