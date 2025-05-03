@@ -1,0 +1,37 @@
+name: Proton GE exp WoW64 CI
+
+on:
+  schedule:
+    - cron:  '0 0 1,17 * *'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Download artifact
+        id: download-artifact
+        uses: dawidd6/action-download-artifact@v2
+        continue-on-error: true
+        with:
+          workflow: bootstrap_wow64.yml
+          workflow_conclusion: success
+          path: /opt
+      - name: Build Proton
+        run: |
+          sudo apt update
+          sudo apt install debootstrap perl git wget xz-utils bubblewrap autoconf
+          sudo apt-get install ocl-icd-opencl-dev
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_unconfined=0
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          sudo tar -C /opt -xpf "/opt/Bootstraps WoW64/bootstraps_wow64.tar.xz"
+          chmod +x build_wine_proton.sh
+          WINE_BRANCH=proton PROTON_BRANCH=bleeding-edge ./build_wine_proton.sh
+          sha256sum *.tar.xz
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: Proton
+          files: |
+            ./wine-action-proton.tar.xz
