@@ -1,12 +1,12 @@
 diff --git a/dlls/iphlpapi/iphlpapi_main.c b/dlls/iphlpapi/iphlpapi_main.c
-index 172afbd62b8..d69ce83f829 100644
+index 207c2ae20d0..c92e9814207 100644
 --- a/dlls/iphlpapi/iphlpapi_main.c
 +++ b/dlls/iphlpapi/iphlpapi_main.c
 @@ -44,9 +44,18 @@
  WINE_DEFAULT_DEBUG_CHANNEL(iphlpapi);
  
  #define CHARS_IN_GUID 39
-+#define ADAPTER_INFO_PATH "/data/data/com.gebox.emu/files/usr/tmp/adapterinfo"
++#define ADAPTER_INFO_PATH "/data/data/com.termux/files/usr/tmp/adapterinfo"
  
  static const WCHAR *device_tcpip = L"\\DEVICE\\TCPIP_";
  
@@ -171,11 +171,6 @@ index 172afbd62b8..d69ce83f829 100644
 -        err = ERROR_NO_DATA;
 -        goto err;
 -    }
--
--    err = NsiAllocateAndGetTable( 1, &NPI_MS_IPV4_MODULEID, NSI_IP_UNICAST_TABLE,
--                                  (void **)&uni_keys, sizeof(*uni_keys), (void **)&uni_rw, sizeof(*uni_rw),
--                                  NULL, 0, NULL, 0, &uni_count, 0 );
--    if (err) goto err;
 +        DWORD err, if_count, if_num = 0, uni_count, fwd_count, needed, wins_server_count;
 +        DWORD len, i, uni, fwd;
 +        NET_LUID *if_keys = NULL;
@@ -192,6 +187,11 @@ index 172afbd62b8..d69ce83f829 100644
 +                                      (void **)&if_keys, sizeof(*if_keys), (void **)&if_rw, sizeof(*if_rw),
 +                                      NULL, 0, (void **)&if_stat, sizeof(*if_stat), &if_count, 0 );
  
+-    err = NsiAllocateAndGetTable( 1, &NPI_MS_IPV4_MODULEID, NSI_IP_UNICAST_TABLE,
+-                                  (void **)&uni_keys, sizeof(*uni_keys), (void **)&uni_rw, sizeof(*uni_rw),
+-                                  NULL, 0, NULL, 0, &uni_count, 0 );
+-    if (err) goto err;
+-
 -    /* Slightly overestimate the needed size by assuming that all
 -       unicast addresses require a separate IP_ADDR_STRING. */
 +        if (err) return err;
@@ -389,12 +389,12 @@ index 172afbd62b8..d69ce83f829 100644
  }
  
  static void address_entry_free( void *ptr, ULONG offset, void *ctxt )
-@@ -1322,34 +1438,110 @@ err:
+@@ -1295,27 +1411,108 @@ err:
  ULONG WINAPI DECLSPEC_HOTPATCH GetAdaptersAddresses( ULONG family, ULONG flags, void *reserved,
                                                       IP_ADAPTER_ADDRESSES *aa, ULONG *size )
  {
--    IP_ADAPTER_ADDRESSES *info, **sorted;
--    DWORD err, needed, count;
+-    IP_ADAPTER_ADDRESSES *info;
+-    DWORD err, needed;
 -
 +    int adapter_info_size;
 +    struct adapter_info *adapters_info; 
@@ -403,7 +403,7 @@ index 172afbd62b8..d69ce83f829 100644
  
 -    if (!size) return ERROR_INVALID_PARAMETER;
 -
--    err = adapters_addresses_alloc( family, flags, &info, &count );
+-    err = adapters_addresses_alloc( family, flags, &info );
 -    if (err) return err;
 -
 -    needed = adapters_addresses_size( info );
@@ -488,28 +488,23 @@ index 172afbd62b8..d69ce83f829 100644
 +        aa[-1].Next = NULL;
 +        return 0;
      }
-     else
-     {
--        if (!(sorted = adapters_addresses_sort( info, count ))) err = ERROR_OUTOFMEMORY;
--        else
-+        IP_ADAPTER_ADDRESSES *info, **sorted;
-+        DWORD err, needed, count;
-+        err = adapters_addresses_alloc( family, flags, &info, &count );
+-    else
+-        adapters_addresses_copy( aa, info );
++    else 
++    {
++        IP_ADAPTER_ADDRESSES *info;
++        DWORD err, needed;
++    
++        err = adapters_addresses_alloc( family, flags, &info );
 +        if (err) return err;
 +        needed = adapters_addresses_size( info );
 +        if (!aa || *size < needed)
-         {
--            adapters_addresses_copy( aa, sorted, count );
--            heap_free( sorted );
++        {
 +            *size = needed;
 +            err = ERROR_BUFFER_OVERFLOW;
-         }
--    }
++        }
 +        else
-+            if (!(sorted = adapters_addresses_sort( info, count ))) err = ERROR_OUTOFMEMORY;
-+            else
-+                adapters_addresses_copy( aa, sorted, count );
-+                heap_free( sorted );
++            adapters_addresses_copy( aa, info );
  
 -    adapters_addresses_free( info );
 -    return err;
