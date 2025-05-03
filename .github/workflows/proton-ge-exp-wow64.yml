@@ -137,7 +137,7 @@ jobs:
           
           # Check if winetricks exists
           if [ -f "protonfixes/winetricks" ]; then
-            sed -i 's/W_TMP_EARLY=.*/\W_TMP_EARLY="\/data\/data\/com.gebox.emu\/files\/usr\/tmp\"/' protonfixes/winetricks
+            sed -i 's/W_TMP_EARLY=.*/\W_TMP_EARLY="\/data\/data\/com.termux\/files\/usr\/tmp\"/' protonfixes/winetricks
           else
             echo "WARNING: protonfixes/winetricks not found"
           fi
