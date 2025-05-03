@@ -8,7 +8,7 @@ env:
 
 on:
   schedule:
-    - cron:  '0 0 */3 * *'
+    - cron: '0 0 */3 * *'
   workflow_dispatch:
 
 jobs:
@@ -25,25 +25,24 @@ jobs:
           workflow: bootstrap_wow64.yml
           workflow_conclusion: success
           path: /opt
-      - uses: actions/checkout@v3
       - name: Download artifact proton
         id: download-artifact-proton
         uses: dawidd6/action-download-artifact@v2
         continue-on-error: true
         with:
-          workflow: proton-gitint.yml
+          workflow: proton-ge-init.yml
           workflow_conclusion: success
           path: ./
       - name: Build Wine
         run: |
           sudo apt update &>/dev/null
           sudo apt install debootstrap perl git wget xz-utils bubblewrap autoconf automake libtool &>/dev/null
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_unconfined=0
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           sudo tar -C /opt -xpf "/opt/Bootstraps WoW64/bootstraps_wow64.tar.xz" &>/dev/null
-          mv "PROTON-GE SRC WoW64" wine
-          sudo chmod -R +x wine
-          cd wine
+          # Create BUILD_DIR and move Proton source
+          mkdir -p "${HOME}/build_wine"
+          mv "PROTON-GE SRC WoW64" "${HOME}/build_wine/wine"
+          sudo chmod -R +x "${HOME}/build_wine/wine"
+          cd "${HOME}/build_wine/wine"
           git init
           git remote add origin http://github.com/gloriouseggroll/proton-ge-custom
           git fetch origin
@@ -54,7 +53,7 @@ jobs:
           cp ../termux-wine-fix-protonge.patch patches/termux-patches
           cp ../path-patch-universalPGE.patch patches/termux-patches
           cp ../ndis_proton.patch patches/termux-patches
-          cp ../wine-virtual-memory-proton.patch patches/termux-patches          
+          cp ../wine-virtual-memory-proton.patch patches/termux-patches
           cp ../esync-GE.patch patches/termux-patches
           cp ../looserexceptionhandling_protonGE.patch patches/termux-patches
           sudo chmod +x -R ./patches/termux-patches
@@ -67,14 +66,16 @@ jobs:
           sed -i -E "$(($(sed -n '/ -w/=' default_pfx.py) - 2)) i\    subprocess.run(runtime_args + [\"/bin/bash\", \"-c\",\n        \"mkdir -p /data/data/com.termux/files/usr/tmp/.wine && chmod 700 /data/data/com.termux/files/usr/tmp/.wine\"],\n        env=local_env, check=True)\n" ./default_pfx.py
           mkdir build && cd build
           ../configure.sh --build-name=wine-action-proton-GE --container-engine=podman &>/dev/null
-          cd ..
-          cp ../build_protonGE.sh .
+          cd ../..
+          # Copy and run build_protonGE.sh
+          cp ./build_protonGE.sh "${HOME}/build_wine/wine"
+          cd "${HOME}/build_wine/wine"
           chmod +x build_protonGE.sh
           ./build_protonGE.sh
-          cd results
-          tar -czvf wine-action-proton-GE.tar.xz wine
+          # Move result to workspace for upload
+          mv "${HOME}/build_wine/wine-action-protonGE.tar.xz" .
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: Proton
           files: |
-            ./wine/results/wine-action-proton-GE.tar.xz
+            ./wine-action-protonGE.tar.xz
