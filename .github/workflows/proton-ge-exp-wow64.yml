@@ -48,18 +48,20 @@ jobs:
           ./patches/protonprep-valve-staging.sh
           sed -i 's/tar.gz/tar.xz/' ./Makefile.in
           sed -i 's/tar -cvzf $(BUILD_NAME).tar.xz $(BUILD_NAME)/tar -cvzf \$\(BUILD_NAME\).tar.xz \$\(BUILD_NAME\)\/*/' ./Makefile.in
-          sed -i 's/W_TMP_EARLY=.*/\W_TMP_EARLY="\/data\/data\/com.termux\/files\/usr\/tmp\"/' protonfixes/winetricks
+          sed -i 's/W_TMP_EARLY=.*/\W_TMP_EARLY="\/data\/data\/com.gebox.emu\/files\/usr\/tmp\"/' protonfixes/winetricks
           sed -i -E "$(sed -n '/mv $(REDIST_DIR) $(BUILD_NAME)/=' ./Makefile.in) i\\\tmv \$\(REDIST_DIR\)\/files \$\(REDIST_DIR\)\/wine" ./Makefile.in
-          sed -i -E "$(($(sed -n '/ -w/=' default_pfx.py) - 2)) i\    subprocess.run(runtime_args + [\"/bin/bash\", \"-c\",\n        \"mkdir -p /data/data/com.termux/files/usr/tmp/.wine && chmod 700 /data/data/com.termux/files/usr/tmp/.wine\"],\n        env=local_env, check=True)\n" ./default_pfx.py
+          sed -i -E "$(($(sed -n '/ -w/=' default_pfx.py) - 2)) i\    subprocess.run(runtime_args + [\"/bin/bash\", \"-c\",\n        \"mkdir -p /data/data/com.gebox.emu/files/usr/tmp/.wine && chmod 700 /data/data/com.gebox.emu/files/usr/tmp/.wine\"],\n        env=local_env, check=True)\n" ./default_pfx.py
           mkdir build && cd build
           ../configure.sh --build-name=wine-action-proton-GE --container-engine=podman &>/dev/null
           cd ..
           cp ../build_protonGE.sh .
           chmod +x build_protonGE.sh
           ./build_protonGE.sh
+          cd results
+          tar -czvf wine-action-proton-GE.tar.xz wine
           sha256sum *.tar.xz
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: Proton
           files: |
-            ./wine-action-proton.tar.xz
+            ./wine/results/wine-action-proton-GE.tar.xz
