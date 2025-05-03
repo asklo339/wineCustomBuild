@@ -2,7 +2,7 @@ name: Proton GE exp WoW64 CI
 
 on:
   schedule:
-    - cron:  '0 0 1,17 * *'
+    - cron: '0 0 1,17 * *'
   workflow_dispatch:
 
 jobs:
@@ -11,6 +11,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+
       - name: Download artifact
         id: download-artifact
         uses: dawidd6/action-download-artifact@v2
@@ -19,47 +20,64 @@ jobs:
           workflow: bootstrap_wow64.yml
           workflow_conclusion: success
           path: /opt
-      - name: Build Proton
+
+      - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install debootstrap perl git wget xz-utils bubblewrap autoconf
-          sudo apt-get install ocl-icd-opencl-dev
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_unconfined=0
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-          sudo tar -C /opt -xpf "/opt/Bootstraps WoW64/bootstraps_wow64.tar.xz"
-          sudo mkdir -p wine
-          sudo chmod -R +x wine
+          sudo apt install -y debootstrap perl git wget xz-utils bubblewrap autoconf ocl-icd-opencl-dev
+
+      - name: Adjust kernel settings
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+
+      - name: Setup and patch Wine
+        run: |
+          mkdir wine
+          tar -C /opt -xpf "/opt/Bootstraps WoW64/bootstraps_wow64.tar.xz"
           cd wine
           git init
-          git remote add origin http://github.com/gloriouseggroll/proton-ge-custom
+          git remote add origin https://github.com/gloriouseggroll/proton-ge-custom
           git fetch origin
           git reset --hard origin/master
+
           cp ../proton-GE-drivepatch.patch ./wine-staging/patches/ntdll-ext4-case-folder/0002-ntdll-server-Mark-drive_c-as-case-insensitive-when-c.patch
           cp ../protonprep-valve-staging.sh ./patches/protonprep-valve-staging.sh
-          mkdir ./patches/termux-patches
-          cp ../termux-wine-fix-protonge.patch patches/termux-patches
-          cp ../path-patch-universalPGE.patch patches/termux-patches
-          cp ../ndis_proton.patch patches/termux-patches
-          cp ../wine-virtual-memory-proton.patch patches/termux-patches          
-          cp ../esync-GE.patch patches/termux-patches
-          cp ../looserexceptionhandling_protonGE.patch patches/termux-patches
-          sudo chmod +x -R ./patches/termux-patches
-          sudo chmod +x ./patches/protonprep-valve-staging.sh
+
+          mkdir -p ./patches/termux-patches
+          cp ../termux-wine-fix-protonge.patch patches/termux-patches/
+          cp ../path-patch-universalPGE.patch patches/termux-patches/
+          cp ../ndis_proton.patch patches/termux-patches/
+          cp ../wine-virtual-memory-proton.patch patches/termux-patches/
+          cp ../esync-GE.patch patches/termux-patches/
+          cp ../looserexceptionhandling_protonGE.patch patches/termux-patches/
+
+          chmod +x ./patches/protonprep-valve-staging.sh
+          chmod +x -R ./patches/termux-patches
           ./patches/protonprep-valve-staging.sh
+
           sed -i 's/tar.gz/tar.xz/' ./Makefile.in
           sed -i 's/tar -cvzf $(BUILD_NAME).tar.xz $(BUILD_NAME)/tar -cvzf \$\(BUILD_NAME\).tar.xz \$\(BUILD_NAME\)\/*/' ./Makefile.in
           sed -i 's/W_TMP_EARLY=.*/\W_TMP_EARLY="\/data\/data\/com.gebox.emu\/files\/usr\/tmp\"/' protonfixes/winetricks
+
           sed -i -E "$(sed -n '/mv $(REDIST_DIR) $(BUILD_NAME)/=' ./Makefile.in) i\\\tmv \$\(REDIST_DIR\)\/files \$\(REDIST_DIR\)\/wine" ./Makefile.in
           sed -i -E "$(($(sed -n '/ -w/=' default_pfx.py) - 2)) i\    subprocess.run(runtime_args + [\"/bin/bash\", \"-c\",\n        \"mkdir -p /data/data/com.gebox.emu/files/usr/tmp/.wine && chmod 700 /data/data/com.gebox.emu/files/usr/tmp/.wine\"],\n        env=local_env, check=True)\n" ./default_pfx.py
+
+      - name: Build Proton
+        run: |
+          cd wine
           mkdir build && cd build
           ../configure.sh --build-name=wine-action-proton-GE --container-engine=podman &>/dev/null
           cd ..
           cp ../build_protonGE.sh .
           chmod +x build_protonGE.sh
           ./build_protonGE.sh
-          cd results
-          tar -czvf wine-action-proton-GE.tar.xz wine
+
+      - name: Archive build
+        run: |
+          cd wine/results
+          tar -cJvf wine-action-proton-GE.tar.xz wine
           sha256sum *.tar.xz
+
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: Proton
