@@ -74,9 +74,10 @@ jobs:
           ./patches/protonprep-valve-staging.sh
           sed -i 's/tar.gz/tar.xz/' ./Makefile.in
           sed -i 's/tar -cvzf $(BUILD_NAME).tar.xz $(BUILD_NAME)/tar -cvzf \$\(BUILD_NAME\).tar.xz \$\(BUILD_NAME\)\/*/' ./Makefile.in
-          sed -i 's/W_TMP_EARLY=.*/\W_TMP_EARLY="\/data\/data\/com.termux\/files\/usr\/tmp\"/' protonfixes/winetricks
+          sed -i 's/W_TMP_EARLY=.*/\W_TMP_EARLY="\/data\/data\/com.gebox.emu\/files\/usr\/tmp\"/' protonfixes/winetricks
           sed -i -E "$(sed -n '/mv $(REDIST_DIR) $(BUILD_NAME)/=' ./Makefile.in) i\\\tmv \$\(REDIST_DIR\)\/files \$\(REDIST_DIR\)\/wine" ./Makefile.in
-          sed -i -E "$(($(sed 2> /dev/null sed -n '/ -w/=' default_pfx.py) - 2)) i\    subprocess.run(runtime_args + [\"/bin/bash\", \"-c\",\n        \"mkdir -def build && cd build
+          # Fixed the problematic sed command
+          sed -i -E "$(($(sed -n '/ -w/=' default_pfx.py 2>/dev/null) - 2)) i\\    subprocess.run(runtime_args + [\"/bin/bash\", \"-c\", \"mkdir -p build && cd build\"])" default_pfx.py
           ../configure.sh --build-name=wine-action-proton-GE --container-engine=podman &>/dev/null
           cd ../..
           # Copy and run build_protonGE.sh
