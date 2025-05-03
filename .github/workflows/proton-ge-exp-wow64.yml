@@ -174,7 +174,7 @@ jobs:
           
           # Copy and run build_protonGE.sh
           if [ -f "./build_protonGE.sh" ]; then
-            cp ./build_protonGE.sh "${HOME}/build_wine/wine/"
+            cp ../build_protonGE.sh "${HOME}/build_wine/wine/"
             cd "${HOME}/build_wine/wine"
             chmod +x build_protonGE.sh
             echo "Running build_protonGE.sh..."
