@@ -170,6 +170,7 @@ jobs:
           # Check if build_protonGE.sh exists
           echo "Checking for build_protonGE.sh..."
           find "${HOME}/build_wine" -name "build_protonGE.sh" || echo "build_protonGE.sh not found"
+          find "${HOME}" -name "build_protonGE.sh" || echo "build_protonGE.sh not found"
           
           # Copy and run build_protonGE.sh
           if [ -f "./build_protonGE.sh" ]; then
