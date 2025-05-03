@@ -32,8 +32,8 @@ jobs:
 
       - name: Setup and patch Wine
         run: |
-          mkdir wine
           tar -C /opt -xpf "/opt/Bootstraps WoW64/bootstraps_wow64.tar.xz"
+          mkdir wine
           cd wine
           git init
           git remote add origin https://github.com/gloriouseggroll/proton-ge-custom
