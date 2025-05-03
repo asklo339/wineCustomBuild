@@ -146,14 +146,19 @@ jobs:
           else
             echo "WARNING: default_pfx.py not found"
           fi
+
+
+          # Create build directory and run configure from there
+          mkdir -p build
+          cd build
           
           # Look for configure.sh
           echo "Looking for configure.sh..."
           find .. -name "configure.sh" || echo "configure.sh not found"
           
-          if [ -f "./configure.sh" ]; then
+          if [ -f "../configure.sh" ]; then
             echo "Running configure.sh..."
-            ./configure.sh --build-name=wine-action-proton-GE --container-engine=podman || echo "Configure failed with exit code $?"
+            ../configure.sh --build-name=wine-action-proton-GE --container-engine=podman || echo "Configure failed with exit code $?"
           else
             echo "ERROR: configure.sh not found in expected location!"
             find "${HOME}/build_wine" -name "configure.sh"
