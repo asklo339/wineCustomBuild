@@ -16,7 +16,7 @@ jobs:
         uses: dawidd6/action-download-artifact@v2
         continue-on-error: true
         with:
-          workflow: bootstrap_wow64.yml
+          workflow: bootstrap_testWow64.yml
           workflow_conclusion: success
           path: /opt
       - name: Build Proton
