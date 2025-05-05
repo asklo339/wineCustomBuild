@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-## A script for creating a WoW64-specific Ubuntu bootstrap for Wine compilation.
-## This bootstrap will not build the 32-bit part of Wine.
+## A script for creating WoW64 specific Ubuntu bootstrap.
+## This bootstrap will not be able to build 32 bit part of Wine.
 ## debootstrap and perl are required
 ## root rights are required
 ##
@@ -20,7 +20,8 @@ fi
 
 # Keep in mind that although you can choose any version of Ubuntu/Debian
 # here, but this script has only been tested with Ubuntu 18.04 Bionic
-export CHROOT_DISTRO="bionic"
+export CHROOT_DISTRO="noble"
+
 export CHROOT_MIRROR="https://ftp.uni-stuttgart.de/ubuntu/"
 
 # Set your preferred path for storing chroots
@@ -29,7 +30,7 @@ export CHROOT_MIRROR="https://ftp.uni-stuttgart.de/ubuntu/"
 export MAINDIR=/opt/chroots
 export CHROOT_X64="${MAINDIR}"/${CHROOT_DISTRO}64_chroot
 
-prepare_chroot() {
+prepare_chroot () {
     CHROOT_PATH="${CHROOT_X64}"
 
     echo "Unmount chroot directories. Just in case."
@@ -60,20 +61,15 @@ prepare_chroot() {
     umount "${CHROOT_PATH}"/dev
 }
 
-create_build_scripts() {
-    sdl2_version="2.26.4"
-    faudio_version="23.03"
-    vulkan_headers_version="1.4.304"
-    vulkan_loader_version="1.4.304"
-    spirv_headers_version="sdk-1.3.239.0"
+create_build_scripts () {
+    sdl2_version="2.30.2"
+    faudio_version="24.05"
+    vulkan_headers_version="1.3.285"
+    vulkan_loader_version="1.3.285"
+    spirv_headers_version="sdk-1.3.283.0"
     libpcap_version="1.10.4"
-    libxkbcommon_version="1.6.0"
-    python3_version="3.12.4"
-    meson_version="1.3.2"
-    cmake_version="3.30.3"
-    ccache_version="4.10.2"
-    libglvnd_version="1.7.0"
-    ffmpeg_version="5.1.4"
+    libxkbcommon_version="1.7.0"
+    ffmpeg_version="4.4"  # Added FFmpeg version
 
     cat <<EOF > "${MAINDIR}"/prepare_chroot.sh
 #!/bin/bash
@@ -94,40 +90,38 @@ apt-get update
 apt-get -y upgrade
 apt-get -y dist-upgrade
 apt-get -y install software-properties-common
-add-apt-repository -y ppa:ubuntu-toolchain-r/test
-add-apt-repository -y ppa:cybermax-dexter/mingw-w64-backport
 apt-get update
-apt-get -y build-dep wine-development libsdl2 libvulkan1 python3
-apt-get -y install ccache gcc-11 g++-11 wget git gcc-mingw-w64 g++-mingw-w64 ninja-build
+apt-get -y build-dep wine-development libsdl2 libvulkan1
+apt-get -y install cmake flex bison ccache gcc-14 g++-14 wget git gcc-mingw-w64 g++-mingw-w64
 apt-get -y install libxpresent-dev libjxr-dev libusb-1.0-0-dev libgcrypt20-dev libpulse-dev libudev-dev libsane-dev libv4l-dev libkrb5-dev libgphoto2-dev liblcms2-dev libcapi20-dev
-apt-get -y install libjpeg62-dev samba-dev
-apt-get -y install libpcsclite-dev libcups2-dev
-apt-get -y install python3-pip libxcb-xkb-dev libbz2-dev texinfo curl
-apt-get -y purge libvulkan-dev libvulkan1 libsdl2-dev libsdl2-2.0-0 libpcap0.8-dev libpcap0.8 --purge --autoremove
-apt-get -y purge *gstreamer* --purge --autoremove
+apt-get -y install libjpeg62-dev samba-dev libfreetype-dev libunwind-dev ocl-icd-opencl-dev libgnutls28-dev libx11-dev libxcomposite-dev libxcursor-dev libxfixes-dev libxi-dev libxrandr-dev 
+apt-get -y install libxrender-dev libxext-dev libpcsclite-dev libcups2-dev libosmesa6-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+apt-get -y install python3-pip libxcb-xkb-dev libfontconfig-dev libgl-dev
+apt-get -y install meson ninja-build libxml2 libxml2-dev libxkbcommon-dev libxkbcommon0 xkb-data libxxf86vm-dev libdbus-1-dev
+# Added FFmpeg dependencies
+apt-get -y install libass-dev libvpx-dev libx264-dev libx265-dev libopus-dev yasm
+# Purge system FFmpeg to avoid conflicts with custom build
+apt-get -y purge libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libswresample-dev libavfilter-dev --purge --autoremove
 apt-get -y clean
 apt-get -y autoclean
-export PATH="/usr/local/bin:\${PATH}"
+export PATH="/usr/local/bin:${PATH}"
 mkdir /opt/build_libs
 cd /opt/build_libs
 wget -O sdl.tar.gz https://www.libsdl.org/release/SDL2-${sdl2_version}.tar.gz
 wget -O faudio.tar.gz https://github.com/FNA-XNA/FAudio/archive/${faudio_version}.tar.gz
 wget -O vulkan-loader.tar.gz https://github.com/KhronosGroup/Vulkan-Loader/archive/v${vulkan_loader_version}.tar.gz
 wget -O vulkan-headers.tar.gz https://github.com/KhronosGroup/Vulkan-Headers/archive/v${vulkan_headers_version}.tar.gz
-wget -O spirv-headers.tar.gz https://github.com/KhronosGroup/SPIRV-Headers/archive/${spirv_headers_version}.tar.gz
+wget -O spirv-headers.tar.gz https://github.com/KhronosGroup/SPIRV-Headers/archive/refs/tags/vulkan-sdk-1.3.283.0.tar.gz
 wget -O libpcap.tar.gz https://www.tcpdump.org/release/libpcap-${libpcap_version}.tar.gz
 wget -O libxkbcommon.tar.xz https://xkbcommon.org/download/libxkbcommon-${libxkbcommon_version}.tar.xz
-wget -O python3.tar.gz https://www.python.org/ftp/python/${python3_version}/Python-${python3_version}.tgz
-wget -O meson.tar.gz https://github.com/mesonbuild/meson/releases/download/${meson_version}/meson-${meson_version}.tar.gz
-wget -O cmake.tar.gz https://github.com/Kitware/CMake/releases/download/v${cmake_version}/cmake-${cmake_version}.tar.gz
-wget -O ccache.tar.gz https://github.com/ccache/ccache/releases/download/v${ccache_version}/ccache-${ccache_version}.tar.gz
-wget -O libglvnd.tar.gz https://gitlab.freedesktop.org/glvnd/libglvnd/-/archive/v${libglvnd_version}/libglvnd-v${libglvnd_version}.tar.gz
-wget -O /usr/include/linux/ntsync.h https://raw.githubusercontent.com/zen-kernel/zen-kernel/refs/heads/6.13/main/include/uapi/linux/ntsync.h
-wget -O /usr/include/linux/userfaultfd.h https://raw.githubusercontent.com/zen-kernel/zen-kernel/refs/heads/6.13/main/include/uapi/linux/userfaultfd.h
-if [ -d /usr/lib/x86_64-linux-gnu ]; then wget -O wine.deb https://dl.winehq.org/wine-builds/ubuntu/dists/bionic/main/binary-amd64/wine-stable_4.0.3~bionic_amd64.deb; fi
-git clone https://gitlab.freedesktop.org/gstreamer/gstreamer.git -b 1.22
-wget https://raw.githubusercontent.com/Kron4ek/Wine-Builds/refs/heads/master/mingw-w64-build
+# Added FFmpeg download
 wget -O ffmpeg.tar.bz2 https://ffmpeg.org/releases/ffmpeg-${ffmpeg_version}.tar.bz2
+if [ -d /usr/lib/x86_64-linux-gnu ]; then wget -O wine.deb https://dl.winehq.org/wine-builds/ubuntu/dists/jammy/main/binary-amd64/wine-stable_9.0.0.0~jammy-1_amd64.deb; fi
+# VkD3D download script. Needs automation to be implemented
+wget -O vkd3d.tar.xz https://dl.winehq.org/vkd3d/source/vkd3d-1.11.tar.xz 
+tar xf vkd3d.tar.xz
+mv vkd3d-1.11 vkd3d
+#
 tar xf sdl.tar.gz
 tar xf faudio.tar.gz
 tar xf vulkan-loader.tar.gz
@@ -135,24 +129,11 @@ tar xf vulkan-headers.tar.gz
 tar xf spirv-headers.tar.gz
 tar xf libpcap.tar.gz
 tar xf libxkbcommon.tar.xz
-tar xf python3.tar.gz
-tar xf cmake.tar.gz
-tar xf ccache.tar.gz
-tar xf libglvnd.tar.gz
-tar xf meson.tar.gz -C /usr/local
 tar xf ffmpeg.tar.bz2
-ln -s /usr/local/meson-${meson_version}/meson.py /usr/local/bin/meson
-bash mingw-w64-build x86_64
-export CC=gcc-11
-export CXX=g++-11
-export CFLAGS="-O2"
-export CXXFLAGS="-O2"
-cd cmake-${cmake_version}
-./bootstrap --parallel=$(nproc)
-make -j$(nproc) install
-cd ../ && mkdir build && cd build
-cmake ../ccache-${ccache_version} && make -j$(nproc) && make install
-cd ../ && rm -r build && mkdir build && cd build
+# Updated CFLAGS and CXXFLAGS with _FORTIFY_SOURCE=2
+export CFLAGS="-O2 -D_FORTIFY_SOURCE=2"
+export CXXFLAGS="-O2 -D_FORTIFY_SOURCE=2"
+mkdir build && cd build
 cmake ../SDL2-${sdl2_version} && make -j$(nproc) && make install
 cd ../ && rm -r build && mkdir build && cd build
 cmake ../FAudio-${faudio_version} && make -j$(nproc) && make install
@@ -163,35 +144,29 @@ cmake ../Vulkan-Loader-${vulkan_loader_version}
 make -j$(nproc)
 make install
 cd ../ && rm -r build && mkdir build && cd build
-cmake ../SPIRV-Headers-${spirv_headers_version} && make -j$(nproc) && make install
+cmake ../SPIRV-Headers-vulkan-sdk-1.3.283.0 && make -j$(nproc) && make install
 cd ../ && dpkg -x wine.deb .
 cp opt/wine-stable/bin/widl /usr/bin
-rm -r build && mkdir build && cd build
-../libpcap-${libpcap_version}/configure && make -j$(nproc) install
+cd vkd3d
 cd ../ && rm -r build && mkdir build && cd build
-../Python-${python3_version}/configure --enable-optimizations
+../vkd3d/configure && make -j$(nproc) && make install
+cd ../ && rm -r build && mkdir build && cd build
+../libpcap-${libpcap_version}/configure && make -j$(nproc) install
+# Added FFmpeg build
+cd ../ && rm -r build && mkdir build && cd build
+../ffmpeg-${ffmpeg_version}/configure --prefix=/usr/local --enable-shared --disable-static --disable-programs --disable-doc
 make -j$(nproc)
-make -j$(nproc) install
-pip3 install setuptools
-cd ../libxkbcommon-${libxkbcommon_version}
-meson setup build -Denable-docs=false
-meson compile -C build
-meson install -C build
-cd ../gstreamer
-meson setup build
-ninja -C build
-ninja -C build install
-cd ../libglvnd-v${libglvnd_version}
-meson setup build
-meson compile -C build
-meson install -C build
-cd ../ffmpeg-${ffmpeg_version}
-./configure --prefix=/usr --enable-shared --disable-static && make -j$(nproc) && make install
+make install
+cd ../ && rm -r ffmpeg-${ffmpeg_version}
+#cd ../libxkbcommon-${libxkbcommon_version}
+#meson setup build -Denable-docs=false
+#meson compile -C build
+#meson install -C build
 cd /opt && rm -r /opt/build_libs
 EOF
 
     chmod +x "${MAINDIR}"/prepare_chroot.sh
-    mv "${MAINDIR}"/prepare_chroot.sh "${CHROOT_X64}"/opt
+    cp "${MAINDIR}"/prepare_chroot.sh "${CHROOT_X64}"/opt
 }
 
 mkdir -p "${MAINDIR}"
@@ -199,7 +174,7 @@ mkdir -p "${MAINDIR}"
 debootstrap --arch amd64 $CHROOT_DISTRO "${CHROOT_X64}" $CHROOT_MIRROR
 
 create_build_scripts
-prepare_chroot
+prepare_chroot 64
 
 rm "${CHROOT_X64}"/opt/prepare_chroot.sh
 
