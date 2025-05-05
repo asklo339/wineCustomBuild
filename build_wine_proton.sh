@@ -477,7 +477,7 @@ if [ "$TERMUX_GLIBC" = "true" ]; then
     echo "Applying path change patch"
     ## Proton is based on Wine 9.0 stable release so some of the updates
     ## for patches are not required.
-    patch -d wine -Np1 < "${scriptdir}"/pathfix-10.patch || {
+    patch -d wine -Np1 < "${scriptdir}"/pathfix-wine9.5.patch || {
         echo "Error: Failed to apply one or more patches."
         exit 1
     }
