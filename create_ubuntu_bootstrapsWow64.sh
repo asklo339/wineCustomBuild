@@ -34,7 +34,12 @@ prepare_chroot () {
     CHROOT_PATH="${CHROOT_X64}"
 
     echo "Unmount chroot directories. Just in case."
-    umount -Rl "${CHROOT_PATH}"
+    mountpoint -q "${CHROOT_PATH}" && umount -Rl "${CHROOT_PATH}"
+    mountpoint -q "${CHROOT_PATH}/proc" && umount "${CHROOT_PATH}/proc"
+    mountpoint -q "${CHROOT_PATH}/sys" && umount "${CHROOT_PATH}/sys"
+    mountpoint -q "${CHROOT_PATH}/dev/pts" && umount "${CHROOT_PATH}/dev/pts"
+    mountpoint -q "${CHROOT_PATH}/dev/shm" && umount "${CHROOT_PATH}/dev/shm"
+    mountpoint -q "${CHROOT_PATH}/dev" && umount "${CHROOT_PATH}/dev"
 
     echo "Mount directories for chroot"
     mount --bind "${CHROOT_PATH}" "${CHROOT_PATH}"
@@ -53,12 +58,12 @@ prepare_chroot () {
     chroot "${CHROOT_PATH}" /usr/bin/env LANG=en_US.UTF-8 TERM=xterm PATH="/bin:/sbin:/usr/bin:/usr/sbin" /opt/prepare_chroot.sh
 
     echo "Unmount chroot directories"
-    umount -l "${CHROOT_PATH}"
-    umount "${CHROOT_PATH}"/proc
-    umount "${CHROOT_PATH}"/sys
-    umount "${CHROOT_PATH}"/dev/pts
-    umount "${CHROOT_PATH}"/dev/shm
-    umount "${CHROOT_PATH}"/dev
+    mountpoint -q "${CHROOT_PATH}" && umount -l "${CHROOT_PATH}"
+    mountpoint -q "${CHROOT_PATH}/proc" && umount "${CHROOT_PATH}/proc"
+    mountpoint -q "${CHROOT_PATH}/sys" && umount "${CHROOT_PATH}/sys"
+    mountpoint -q "${CHROOT_PATH}/dev/pts" && umount "${CHROOT_PATH}/dev/pts"
+    mountpoint -q "${CHROOT_PATH}/dev/shm" && umount "${CHROOT_PATH}/dev/shm"
+    mountpoint -q "${CHROOT_PATH}/dev" && umount "${CHROOT_PATH}/dev"
 }
 
 create_build_scripts () {
@@ -69,7 +74,7 @@ create_build_scripts () {
     spirv_headers_version="sdk-1.3.283.0"
     libpcap_version="1.10.4"
     libxkbcommon_version="1.7.0"
-    ffmpeg_version="4.4"  # Added FFmpeg version
+    ffmpeg_version="4.4"
 
     cat <<EOF > "${MAINDIR}"/prepare_chroot.sh
 #!/bin/bash
@@ -98,9 +103,9 @@ apt-get -y install libjpeg62-dev samba-dev libfreetype-dev libunwind-dev ocl-icd
 apt-get -y install libxrender-dev libxext-dev libpcsclite-dev libcups2-dev libosmesa6-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
 apt-get -y install python3-pip libxcb-xkb-dev libfontconfig-dev libgl-dev
 apt-get -y install meson ninja-build libxml2 libxml2-dev libxkbcommon-dev libxkbcommon0 xkb-data libxxf86vm-dev libdbus-1-dev
-# Added FFmpeg dependencies
-apt-get -y install libass-dev libvpx-dev libx264-dev libx265-dev libopus-dev yasm
-# Purge system FFmpeg to avoid conflicts with custom build
+# Added FFmpeg dependencies and nasm
+apt-get -y install libass-dev libvpx-dev libx264-dev libx265-dev libopus-dev yasm nasm
+# Purge system FFmpeg to avoid conflicts
 apt-get -y purge libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libswresample-dev libavfilter-dev --purge --autoremove
 apt-get -y clean
 apt-get -y autoclean
@@ -114,10 +119,9 @@ wget -O vulkan-headers.tar.gz https://github.com/KhronosGroup/Vulkan-Headers/arc
 wget -O spirv-headers.tar.gz https://github.com/KhronosGroup/SPIRV-Headers/archive/refs/tags/vulkan-sdk-1.3.283.0.tar.gz
 wget -O libpcap.tar.gz https://www.tcpdump.org/release/libpcap-${libpcap_version}.tar.gz
 wget -O libxkbcommon.tar.xz https://xkbcommon.org/download/libxkbcommon-${libxkbcommon_version}.tar.xz
-# Added FFmpeg download
 wget -O ffmpeg.tar.bz2 https://ffmpeg.org/releases/ffmpeg-${ffmpeg_version}.tar.bz2
 if [ -d /usr/lib/x86_64-linux-gnu ]; then wget -O wine.deb https://dl.winehq.org/wine-builds/ubuntu/dists/jammy/main/binary-amd64/wine-stable_9.0.0.0~jammy-1_amd64.deb; fi
-# VkD3D download script. Needs automation to be implemented
+# VkD3D download script
 wget -O vkd3d.tar.xz https://dl.winehq.org/vkd3d/source/vkd3d-1.11.tar.xz 
 tar xf vkd3d.tar.xz
 mv vkd3d-1.11 vkd3d
@@ -130,32 +134,30 @@ tar xf spirv-headers.tar.gz
 tar xf libpcap.tar.gz
 tar xf libxkbcommon.tar.xz
 tar xf ffmpeg.tar.bz2
-# Updated CFLAGS and CXXFLAGS with _FORTIFY_SOURCE=2
 export CFLAGS="-O2 -D_FORTIFY_SOURCE=2"
 export CXXFLAGS="-O2 -D_FORTIFY_SOURCE=2"
 mkdir build && cd build
-cmake ../SDL2-${sdl2_version} && make -j$(nproc) && make install
+cmake ../SDL2-${sdl2_version} && make -j$(nproc --ignore=1) && make install
 cd ../ && rm -r build && mkdir build && cd build
-cmake ../FAudio-${faudio_version} && make -j$(nproc) && make install
+cmake ../FAudio-${faudio_version} && make -j$(nproc --ignore=1) && make install
 cd ../ && rm -r build && mkdir build && cd build
-cmake ../Vulkan-Headers-${vulkan_headers_version} && make -j$(nproc) && make install
+cmake ../Vulkan-Headers-${vulkan_headers_version} && make -j$(nproc --ignore=1) && make install
 cd ../ && rm -r build && mkdir build && cd build
-cmake ../Vulkan-Loader-${vulkan_loader_version}
-make -j$(nproc)
-make install
+cmake ../Vulkan-Loader-${vulkan_loader_version} && make -j$(nproc --ignore=1) && make install
 cd ../ && rm -r build && mkdir build && cd build
-cmake ../SPIRV-Headers-vulkan-sdk-1.3.283.0 && make -j$(nproc) && make install
+cmake ../SPIRV-Headers-vulkan-sdk-1.3.283.0 && make -j$(nproc --ignore=1) && make install
 cd ../ && dpkg -x wine.deb .
 cp opt/wine-stable/bin/widl /usr/bin
 cd vkd3d
 cd ../ && rm -r build && mkdir build && cd build
-../vkd3d/configure && make -j$(nproc) && make install
+../vkd3d/configure && make -j$(nproc --ignore=1) && make install
 cd ../ && rm -r build && mkdir build && cd build
-../libpcap-${libpcap_version}/configure && make -j$(nproc) install
-# Added FFmpeg build
+../libpcap-${libpcap_version}/configure && make -j$(nproc --ignore=1) install
 cd ../ && rm -r build && mkdir build && cd build
-../ffmpeg-${ffmpeg_version}/configure --prefix=/usr/local --enable-shared --disable-static --disable-programs --disable-doc
-make -j$(nproc)
+# Try FFmpeg with nasm, fall back to disabling asm if it fails
+../ffmpeg-${ffmpeg_version}/configure --prefix=/usr/local --enable-shared --disable-static --disable-programs --disable-doc --enable-asm --enable-nasm || \
+../ffmpeg-${ffmpeg_version}/configure --prefix=/usr/local --enable-shared --disable-static --disable-programs --disable-doc --disable-asm
+make -j$(nproc --ignore=1)
 make install
 cd ../ && rm -r ffmpeg-${ffmpeg_version}
 #cd ../libxkbcommon-${libxkbcommon_version}
