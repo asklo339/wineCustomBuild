@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-## A script for creating a WoW64-specific Ubuntu bootstrap for Wine compilation.
-## This bootstrap will not build the 32-bit part of Wine.
+## A script for creating WoW64-specific Ubuntu bootstrap.
+## This bootstrap will not be able to build 32-bit part of Wine.
 ## debootstrap and perl are required
 ## root rights are required
 ##
@@ -18,7 +18,7 @@ if ! command -v debootstrap 1>/dev/null || ! command -v perl 1>/dev/null; then
     exit 1
 fi
 
-# Check disk space (8 GB required)
+# Check disk space
 required_space=8000000  # 8 GB in KB
 available_space=$(df -k /opt | tail -1 | awk '{print $4}')
 if [ "$available_space" -lt "$required_space" ]; then
@@ -26,7 +26,6 @@ if [ "$available_space" -lt "$required_space" ]; then
     exit 1
 fi
 
-# Use Ubuntu Noble (24.04), tested with this version
 export CHROOT_DISTRO="noble"
 export CHROOT_MIRROR="https://ftp.uni-stuttgart.de/ubuntu/"
 export MAINDIR=/opt/chroots
@@ -69,7 +68,6 @@ create_build_scripts() {
     spirv_headers_version=${SPIRV_HEADERS_VERSION:-"sdk-1.3.283.0"}
     libpcap_version=${LIBPCAP_VERSION:-"1.10.4"}
     libxkbcommon_version=${LIBXKBCOMMON_VERSION:-"1.7.0"}
-    vkd3d_version=${VKD3D_VERSION:-"1.11"}
     ffmpeg_version=${FFMPEG_VERSION:-"5.1.4"}
 
     cat <<EOF > "${MAINDIR}/prepare_chroot.sh"
@@ -92,12 +90,12 @@ apt-get -y dist-upgrade
 apt-get -y install software-properties-common
 apt-get update
 apt-get -y build-dep wine-development libsdl2 libvulkan1
-apt-get -y install cmake flex bison ccache gcc-14 g++-14 wget git gcc-mingw-w64 g++-mingw-w64 ninja-build
+apt-get -y install cmake flex bison ccache gcc-14 g++-14 wget git gcc-mingw-w64 g++-mingw-w64
 apt-get -y install libxpresent-dev libjxr-dev libusb-1.0-0-dev libgcrypt20-dev libpulse-dev libudev-dev libsane-dev libv4l-dev libkrb5-dev libgphoto2-dev liblcms2-dev libcapi20-dev
 apt-get -y install libjpeg62-dev samba-dev libfreetype-dev libunwind-dev ocl-icd-opencl-dev libgnutls28-dev libx11-dev libxcomposite-dev libxcursor-dev libxfixes-dev libxi-dev libxrandr-dev
 apt-get -y install libxrender-dev libxext-dev libpcsclite-dev libcups2-dev libosmesa6-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
-apt-get -y install python3-pip libxcb-xkb-dev libfontconfig-dev libgl-dev libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libswresample-dev libavfilter-dev
-apt-get -y install meson libxml2 libxml2-dev libxkbcommon-dev libxkbcommon0 xkb-data libxxf86vm-dev libdbus-1-dev
+apt-get -y install python3-pip libxcb-xkb-dev libfontconfig-dev libgl-dev
+apt-get -y install meson ninja-build libxml2 libxml2-dev libxkbcommon-dev libxkbcommon0 xkb-data libxxf86vm-dev libdbus-1-dev
 apt-get -y purge libvulkan-dev libvulkan1 libsdl2-dev libsdl2-2.0-0 libpcap0.8-dev libpcap0.8 --purge --autoremove
 apt-get -y clean
 apt-get -y autoclean
@@ -111,9 +109,11 @@ wget -O vulkan-headers.tar.gz https://github.com/KhronosGroup/Vulkan-Headers/arc
 wget -O spirv-headers.tar.gz https://github.com/KhronosGroup/SPIRV-Headers/archive/refs/tags/vulkan-sdk-1.3.283.0.tar.gz
 wget -O libpcap.tar.gz https://www.tcpdump.org/release/libpcap-${libpcap_version}.tar.gz
 wget -O libxkbcommon.tar.xz https://xkbcommon.org/download/libxkbcommon-${libxkbcommon_version}.tar.xz
-wget -O vkd3d.tar.xz https://dl.winehq.org/vkd3d/source/vkd3d-${vkd3d_version}.tar.xz
 wget -O ffmpeg.tar.bz2 https://ffmpeg.org/releases/ffmpeg-${ffmpeg_version}.tar.bz2
 if [ -d /usr/lib/x86_64-linux-gnu ]; then wget -O wine.deb https://dl.winehq.org/wine-builds/ubuntu/dists/noble/main/binary-amd64/wine-stable_9.0.0.0~noble-1_amd64.deb; fi
+wget -O vkd3d.tar.xz https://dl.winehq.org/vkd3d/source/vkd3d-1.11.tar.xz
+tar xf vkd3d.tar.xz
+mv vkd3d-1.11 vkd3d
 tar xf sdl.tar.gz
 tar xf faudio.tar.gz
 tar xf vulkan-loader.tar.gz
@@ -121,8 +121,6 @@ tar xf vulkan-headers.tar.gz
 tar xf spirv-headers.tar.gz
 tar xf libpcap.tar.gz
 tar xf libxkbcommon.tar.xz
-tar xf vkd3d.tar.xz
-mv vkd3d-${vkd3d_version} vkd3d
 tar xf ffmpeg.tar.bz2
 export CFLAGS="-O2"
 export CXXFLAGS="-O2"
@@ -144,21 +142,18 @@ meson setup build -Denable-docs=false
 meson compile -C build
 meson install -C build
 cd ../ && rm -r build && mkdir build && cd build
-../vkd3d/configure && make -j$(nproc) && make install
-cd ../ && rm -r build && mkdir build && cd build
 cd ../ffmpeg-${ffmpeg_version}
 ./configure --prefix=/usr --enable-shared --disable-static && make -j$(nproc) && make install
 cd ../ && dpkg -x wine.deb .
 cp opt/wine-stable/bin/widl /usr/bin
+cd vkd3d
+../vkd3d/configure && make -j$(nproc) && make install
 cd /opt && rm -r /opt/build_libs
 EOF
 
     chmod +x "${MAINDIR}/prepare_chroot.sh"
     mv "${MAINDIR}/prepare_chroot.sh" "${CHROOT_X64}/opt"
 }
-
-# Ensure cleanup on exit
-trap cleanup_chroot EXIT
 
 mkdir -p "${MAINDIR}"
 debootstrap --arch amd64 "$CHROOT_DISTRO" "${CHROOT_X64}" "$CHROOT_MIRROR" || exit 1
