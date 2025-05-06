@@ -7,7 +7,7 @@ index 2691e0c..df1aeea 100644
          fatal_error( "out of memory\n" );
  #else
 -    if (asprintf( &base_dir, "/tmp/.wine-%u", getuid() ) == -1)
-+    if (asprintf( &base_dir, "/data/data/com.gebox.emu/files/usr/tmp/.wine" )
++    if (asprintf( &base_dir, "/data/data/com.gebox.emu/files/usr/tmp/.wine" ) == -1)
          fatal_error( "out of memory\n" );
  #endif
      create_dir( base_dir, &st2 );
@@ -38,7 +38,7 @@ diff -uNr a/dlls/ntdll/unix/server.c b/dlls/ntdll/unix/server.c
 --- a/dlls/ntdll/unix/server.c
 +++ b/dlls/ntdll/unix/server.c
 @@ -1233,7 +1233,7 @@
- #ifdef __ANDROID__  /* there's no /tmp dir on Android */
+ #ifdef **ANDROID**  /* there's no /tmp dir on Android */
      asprintf( &dir, "%s/.wineserver/server-%llx-%llx", config_dir, (unsigned long long)dev, (unsigned long long)ino );
  #else
 -    asprintf( &dir, "/tmp/.wine-%u/server-%llx-%llx", getuid(), (unsigned long long)dev, (unsigned long long)ino );
