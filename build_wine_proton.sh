@@ -476,7 +476,7 @@ if [ "$TERMUX_GLIBC" = "true" ]; then
     patch -d wine -Np1 < "${scriptdir}"/esync.patch && \
     echo "Applying address space patch"
     patch -d wine -Np1 < "${scriptdir}"/termux-wine-fix.patch && \
-    echo "Applying path change patch"
+    echo "Applying path change patch Modyfi new"
     ## Proton is based on Wine 9.0 stable release so some of the updates
     ## for patches are not required.
     patch -d wine -Np1 < "${scriptdir}"/pathfix-10.patch || {
