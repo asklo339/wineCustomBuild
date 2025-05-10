@@ -499,6 +499,7 @@ fi
 
 clear
 
+fi
     
 if [ ! -d wine ]; then
 	clear
