@@ -470,7 +470,7 @@ if [ "$TERMUX_GLIBC" = "true" ]; then
     }
     elif [ "$WINE_BRANCH" = "proton" ]; then
             echo "Applying opencl patch"
-            patch -d wine -Np1 < "${scriptdir}"/proton-opencl.patch && \
+            patch -d wine -Np1 < "${scriptdir}"/‎proton-opencl.patch && \
             echo "Applying esync patch"
             patch -d wine -Np1 < "${scriptdir}"/esync-p10.patch && \
             echo "Applying address space patch"
