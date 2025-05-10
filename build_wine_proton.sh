@@ -469,38 +469,36 @@ if [ "$TERMUX_GLIBC" = "true" ]; then
         exit 1
     }
     clear 
-    elif [ "$WINE_BRANCH" = "proton" ]; then
-	    echo "Applying opencl patch"
-            patch -d wine -Np1 < "${scriptdir}"/‎proton-opencl.patch && \
-            echo "Applying esync patch"
-            patch -d wine -Np1 < "${scriptdir}"/esync-p10.patch && \
-            echo "Applying address space patch"
-            patch -d wine -Np1 < "${scriptdir}"/termux-p10.patch && \
-            echo "Applying path change patch"
-            patch -d wine -Np1 < "${scriptdir}"/patch-avcodec.patch && \
-            echo "Applying avcodec patch"
-            ## Proton is based on Wine 9.0 stable release so some of the updates
-            ## for patches are not required.
-            patch -d wine -Np1 < "${scriptdir}"/pathfix-p10.patch || {
-            echo "Error: Failed to apply one or more patches."
-            exit 1
-            }
-        else
-            echo "Applying esync patch"
-            patch -d wine -Np1 < "${scriptdir}"/esync.patch && \
-            echo "Applying address space patch"
-            patch -d wine -Np1 < "${scriptdir}"/termux-wine-fix.patch && \
-            echo "Applying path change patch"
-            ## Proton is based on Wine 9.0 stable release so some of the updates
-            ## for patches are not required.
-            patch -d wine -Np1 < "${scriptdir}"/pathfix-wine9.5.patch || {
-            echo "Error: Failed to apply one or more patches."
-            exit 1
+    if [ "$WINE_BRANCH" = "proton" ]; then
+    echo "Applying opencl patch"
+    patch -d wine -Np1 < "${scriptdir}/proton-opencl.patch" && \
+    echo "Applying esync patch"
+    patch -d wine -Np1 < "${scriptdir}/esync-p10.patch" && \
+    echo "Applying address space patch"
+    patch -d wine -Np1 < "${scriptdir}/termux-p10.patch" && \
+    echo "Applying path change patch"
+    patch -d wine -Np1 < "${scriptdir}/patch-avcodec.patch" && \
+    echo "Applying avcodec patch"
+    ## Proton is based on Wine 9.0 stable release so some of the updates are not required.
+    patch -d wine -Np1 < "${scriptdir}/pathfix-p10.patch" || {
+        echo "Error: Failed to apply one or more patches."
+        exit 1
     }
-    fi
-    clear 
+else
+    echo "Applying esync patch"
+    patch -d wine -Np1 < "${scriptdir}/esync.patch" && \
+    echo "Applying address space patch"
+    patch -d wine -Np1 < "${scriptdir}/termux-wine-fix.patch" && \
+    echo "Applying path change patch"
+    ## Proton is based on Wine 9.0 stable release so some of the updates are not required.
+    patch -d wine -Np1 < "${scriptdir}/pathfix-wine9.5.patch" || {
+        echo "Error: Failed to apply one or more patches."
+        exit 1
+    }
 fi
-fi
+
+clear
+
     
 if [ ! -d wine ]; then
 	clear
