@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Build Wine
         run: |
-          git clone --recurse-submodules https://github.com/ValveSoftware/wine -b bleeding-edge
+          git clone --recurse-submodules https://github.com/bylaws/wine -b upstream-arm64ec
       - uses: actions/upload-artifact@v4
         with:
           name: PROTON-GE SRC WoW64
