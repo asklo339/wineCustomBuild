@@ -23,4 +23,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: PROTON-GE SRC WoW64
-          path: ./wine
+          path: ./mesa
